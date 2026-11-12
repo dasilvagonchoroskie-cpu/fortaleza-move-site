@@ -206,3 +206,5 @@ footer.rodape .links a{padding:6px 2px}
 .cid-chips .vazio{background:none;border:0;color:var(--muted);font-weight:400;padding:0}
 .cid-chips button{border:0;background:var(--navy3);color:#fff;width:26px;height:26px;border-radius:50%;font-size:1.05rem;line-height:1;cursor:pointer}
 .cid-add{display:flex;gap:8px;align-items:center}.cid-add input{flex:1;margin:0}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}

@@ -142,26 +142,43 @@
   carregarPosts();
 })();
 
-// WhatsApp direto: no celular abre o aplicativo sem sair da página (sem tela em branco).
-// Android: "intent" do Chrome (se não tiver o app, o próprio Chrome abre o wa.me). iPhone: esquema whatsapp://.
+// WhatsApp: abre o aplicativo sem passar pela página intermediária do wa.me (que deixava a tela em branco).
+//  - Android no Chrome: "intent" do Chrome (sem o app, o próprio Chrome abre o wa.me).
+//  - App instalado (Android ou iPhone): esquema whatsapp://; se nada acontecer em 2 s, abre o wa.me.
+//  - Safari no iPhone e computador: link normal (o iPhone abre o app pelo próprio link universal do wa.me).
 (function () {
   var ua = navigator.userAgent, android = /Android/i.test(ua), ios = /iPhone|iPad|iPod/i.test(ua);
-  if (!android && !ios) return;
+  var instalado = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+  if (!(android || (ios && instalado))) return;          // Safari/computador: comportamento padrão do link
+  var ocupado = false;
+  function disparar(url) {
+    var l = document.createElement("a");
+    l.href = url; l.style.display = "none";
+    document.body.appendChild(l); l.click();
+    setTimeout(function () { l.remove(); }, 500);
+  }
   document.addEventListener("click", function (e) {
     var a = e.target.closest && e.target.closest("a[href*='wa.me/']");
     if (!a) return;
     var m = a.href.match(/wa\.me\/(\d+)(?:\?text=([^&#]*))?/);
     if (!m) return;
     e.preventDefault();
+    if (ocupado) return;                                  // evita toque duplo abrir duas vezes
+    ocupado = true; setTimeout(function () { ocupado = false; }, 2500);
     var q = "phone=" + m[1] + (m[2] ? "&text=" + m[2] : "");
-    var instalado = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
-    var url = (android && !instalado)
-      ? "intent://send?" + q + "#Intent;scheme=whatsapp;package=com.whatsapp;S.browser_fallback_url=" + encodeURIComponent(a.href) + ";end"
-      : "whatsapp://send?" + q;
-    var l = document.createElement("a");
-    l.href = url; l.style.display = "none";
-    document.body.appendChild(l); l.click();
-    setTimeout(function () { l.remove(); }, 500);
-    if (instalado) setTimeout(function () { if (!document.hidden) window.open(a.href, "_blank", "noopener"); }, 1800);
+    if (android && !instalado) {
+      disparar("intent://send?" + q + "#Intent;scheme=whatsapp;package=com.whatsapp;S.browser_fallback_url=" + encodeURIComponent(a.href) + ";end");
+      return;
+    }
+    // app instalado: só cai para o wa.me se a página continuar à vista e em primeiro plano
+    var saiu = false, marca = function () { saiu = true; };
+    window.addEventListener("pagehide", marca, { once: true });
+    window.addEventListener("blur", marca, { once: true });
+    document.addEventListener("visibilitychange", marca, { once: true });
+    disparar("whatsapp://send?" + q);
+    setTimeout(function () {
+      window.removeEventListener("pagehide", marca); window.removeEventListener("blur", marca); document.removeEventListener("visibilitychange", marca);
+      if (!saiu && !document.hidden && document.hasFocus()) window.open(a.href, "_blank", "noopener");
+    }, 2000);
   });
 })();

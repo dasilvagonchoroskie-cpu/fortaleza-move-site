@@ -10,7 +10,7 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Painel — Fortaleza Move</title>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="apple-touch-icon" href="admin-apple-touch-icon.png">
 <link rel="manifest" href="admin.webmanifest">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -65,6 +65,7 @@
         <h2 style="font-size:1.15rem">Suas publicações</h2>
         <button id="btn-nova" class="btn btn-sm btn-gold">+ Nova publicação</button>
       </div>
+      <div id="msg-lista" style="margin-top:10px"></div>
       <div id="lista-posts" style="margin-top:10px"></div>
     </div>
 
@@ -115,7 +116,7 @@
         <label for="t-wa">WhatsApp (só números, com 55 e DDD)</label>
         <input id="t-wa" inputmode="numeric" maxlength="15">
         <label for="nova-cidade">Cidades atendidas</label>
-        <p class="dica">Só aparecem no site as cidades listadas aqui. Sem nenhuma cidade, a seção some do site. Acrescente uma cidade quando a Fortaleza Move começar a atender nela.</p>
+        <p class="dica">Só aparecem no site as cidades listadas aqui. Sem nenhuma cidade, a seção some do site. Acrescente uma cidade quando a Fortaleza Move começar a atender nela. Depois de adicionar ou remover, toque em “Salvar textos”.</p>
         <div id="cid-chips" class="cid-chips"></div>
         <div class="cid-add"><input id="nova-cidade" maxlength="60" placeholder="Ex.: Goiatuba (GO)" autocomplete="off"><button id="btn-cid-add" class="btn btn-sm btn-navy" type="button">Adicionar</button></div>
         <input id="t-cidades" type="hidden">
