@@ -93,7 +93,20 @@
       b.classList.add("on");
       $("tab-posts").style.display = b.dataset.tab === "posts" ? "block" : "none";
       $("tab-textos").style.display = b.dataset.tab === "textos" ? "block" : "none";
+      $("tab-conta").style.display = b.dataset.tab === "conta" ? "block" : "none";
     });
+  });
+
+  $("form-conta").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var m = $("msg-conta");
+    var a = $("c-nova1").value, b = $("c-nova2").value;
+    if (a.length < 10) return msg(m, "err", "Use pelo menos 10 caracteres.");
+    if (a !== b) return msg(m, "err", "As duas senhas não são iguais.");
+    var r = await sb.auth.updateUser({ password: a });
+    if (r.error) return msg(m, "err", "Não foi possível trocar a senha. Saia e entre de novo e tente outra vez.");
+    $("c-nova1").value = ""; $("c-nova2").value = "";
+    msg(m, "ok", "Senha trocada com sucesso.");
   });
 
   // ---------- publicações ----------

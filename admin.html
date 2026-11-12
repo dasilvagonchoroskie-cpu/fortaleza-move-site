@@ -48,6 +48,7 @@
   <div class="tabs">
     <button data-tab="posts" class="on">Publicações</button>
     <button data-tab="textos">Textos do site</button>
+    <button data-tab="conta">Conta</button>
   </div>
 
   <div id="tab-posts">
@@ -109,6 +110,20 @@
         <input id="t-cidades">
         <div id="msg-textos"></div>
         <button class="btn btn-gold" style="margin-top:18px" type="submit">Salvar textos</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="tab-conta" style="display:none">
+    <div class="box-adm">
+      <h2 style="font-size:1.15rem">Trocar minha senha</h2>
+      <form id="form-conta">
+        <label for="c-nova1">Nova senha (mínimo 10 caracteres)</label>
+        <input id="c-nova1" type="password" autocomplete="new-password" minlength="10" required>
+        <label for="c-nova2">Repita a nova senha</label>
+        <input id="c-nova2" type="password" autocomplete="new-password" minlength="10" required>
+        <div id="msg-conta"></div>
+        <button class="btn btn-gold" style="margin-top:18px" type="submit">Salvar nova senha</button>
       </form>
     </div>
   </div>
