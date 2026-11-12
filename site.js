@@ -74,7 +74,7 @@
       return;
     }
     if (!postsCache.length) {
-      box.innerHTML = '<div class="vazio" style="grid-column:1/-1">Em breve, novidades da Fortaleza Mov por aqui.</div>';
+      box.innerHTML = '<div class="vazio" style="grid-column:1/-1">Em breve, novidades da Fortaleza Move por aqui.</div>';
       return;
     }
     box.innerHTML = postsCache.map(function (p, i) {

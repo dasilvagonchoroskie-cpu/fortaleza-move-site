@@ -1,4 +1,4 @@
-// Service worker da Fortaleza Mov.
+// Service worker da Fortaleza Move.
 // Estratégia: rede primeiro (o site sempre mostra a versão mais nova) e, sem internet, usa a cópia guardada.
 // Não guarda nada do painel administrativo nem de outros domínios (Supabase).
 var VERSAO = "fm-v2";

@@ -197,3 +197,5 @@ footer.rodape .links a{padding:6px 2px}
 }
 @media(min-width:821px){nav.menu{gap:26px}}
 @media(max-width:360px){.bottomnav a{font-size:.62rem}}
+[hidden]{display:none!important}
+.adm-bar .wrap>*{margin-left:8px}
