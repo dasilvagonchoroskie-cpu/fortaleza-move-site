@@ -139,3 +139,19 @@
   carregarTextos();
   carregarPosts();
 })();
+
+// WhatsApp direto: no celular abre o aplicativo na hora (sem passar pela página intermediária do wa.me, que deixava a tela em branco).
+(function () {
+  var movel = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest && e.target.closest("a[href*='wa.me/']");
+    if (!a || !movel) return;
+    var m = a.href.match(/wa\.me\/(\d+)(?:\?text=([^&#]*))?/);
+    if (!m) return;
+    e.preventDefault();
+    var web = a.href;
+    var app = "whatsapp://send?phone=" + m[1] + (m[2] ? "&text=" + m[2] : "");
+    window.location.href = app;
+    setTimeout(function () { if (!document.hidden) window.open(web, "_blank", "noopener"); }, 1500);
+  });
+})();
