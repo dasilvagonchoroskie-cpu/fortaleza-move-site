@@ -93,8 +93,8 @@ section{padding:72px 0}
 .modal{position:fixed;inset:0;background:rgba(5,12,30,.75);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
 .modal.on{display:flex}
 .modal .box{background:var(--white);max-width:680px;width:100%;max-height:90vh;overflow:auto;border-radius:22px}
-.modal .box .img{aspect-ratio:16/9;background:var(--navy2);overflow:hidden}
-.modal .box .img img{width:100%;height:100%;object-fit:cover;display:block}
+.modal .box .img{background:var(--navy);display:flex;justify-content:center}
+.modal .box .img img{display:block;width:100%;height:auto;max-height:70vh;object-fit:contain}
 .modal .in{padding:26px}
 .modal h3{font-size:1.4rem;margin:8px 0 12px}
 .modal p{margin-bottom:12px;color:#2a3558}
@@ -229,3 +229,7 @@ html{background:var(--bg)}
 .faixa-instalar .btn{flex-shrink:0}
 .faixa-instalar .fx-x{flex-shrink:0;background:none;border:0;color:#cfd7ee;font-size:1.5rem;line-height:1;width:36px;height:36px;border-radius:50%;cursor:pointer}
 .faixa-instalar .fx-x:hover,.faixa-instalar .fx-x:focus-visible{background:rgba(255,255,255,.1);color:#fff}
+.post .img.tem-foto{position:relative;background:var(--navy)}
+.post .img.tem-foto .fundo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:blur(18px) brightness(.75);transform:scale(1.15)}
+.post .img.tem-foto .foto{position:relative;width:100%;height:100%;object-fit:contain}
+@media (max-width:640px){.post .img.tem-foto{aspect-ratio:auto}.post .img.tem-foto .fundo{display:none}.post .img.tem-foto .foto{height:auto;max-height:75vh}}

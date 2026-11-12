@@ -181,6 +181,32 @@
     });
   });
 
+  // ---------- fotos: reduz o peso antes de enviar ----------
+  // Fotos grandes (ex.: 2 MB, 4000 px) deixam o site lento no celular. Reduz para no máximo 1600 px no lado maior,
+  // mantendo a proporção (nada é cortado). Usa WebP quando o aparelho suporta; senão JPEG (PNG transparente fica como está).
+  // Se não ficar menor, envia o arquivo original.
+  function otimizarFoto(f) {
+    return new Promise(function (ok) {
+      if (f.size < 350 * 1024) return ok(f);
+      var url = URL.createObjectURL(f), im = new Image();
+      im.onerror = function () { URL.revokeObjectURL(url); ok(f); };
+      im.onload = function () {
+        try {
+          var max = 1600, w = im.naturalWidth, h = im.naturalHeight, k = Math.min(1, max / Math.max(w, h));
+          var cv = document.createElement("canvas"); cv.width = Math.round(w * k); cv.height = Math.round(h * k);
+          cv.getContext("2d").drawImage(im, 0, 0, cv.width, cv.height);
+          URL.revokeObjectURL(url);
+          cv.toBlob(function (b) {
+            if (b && b.type === "image/webp" && b.size < f.size) return ok(b);
+            if (f.type === "image/png") return ok(f);               // sem WebP: não troca PNG (pode ter transparência)
+            cv.toBlob(function (j) { ok(j && j.size < f.size ? j : f); }, "image/jpeg", 0.85);
+          }, "image/webp", 0.85);
+        } catch (e) { ok(f); }
+      };
+      im.src = url;
+    });
+  }
+
   // ---------- fotos: lixeira recuperável ----------
   // Foto trocada, removida ou de publicação apagada NÃO é apagada: vai para "lixeira/AAAA-MM-DD/" no mesmo depósito
   // (pode ser recuperada pelo Supabase > Storage). Só move se nenhuma outra publicação usa a mesma foto.
@@ -289,9 +315,11 @@
         var anterior = editandoId ? ((posts.find(function (x) { return x.id === editandoId; }) || {}).imagem_url || null) : null;
         var f = $("p-img").files[0];
         if (f) {
+          if (!/^image\/(jpeg|png|webp)$/.test(f.type)) return msg(m, "err", "Use imagem JPG, PNG ou WebP. Nada foi salvo.");
+          msg(m, "ok", "Preparando a foto…");
+          f = await otimizarFoto(f);                               // mesma proporção, sem cortes; só reduz o peso
           if (f.size > 5 * 1024 * 1024) return msg(m, "err", "A imagem passa de 5 MB. Nada foi salvo.");
           var ext = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" })[f.type];
-          if (!ext) return msg(m, "err", "Use imagem JPG, PNG ou WebP. Nada foi salvo.");
           msg(m, "ok", "Enviando a foto…");
           var path = "posts/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "." + ext;
           var up = await sb.storage.from(C.BUCKET).upload(path, f, { contentType: f.type, upsert: false });

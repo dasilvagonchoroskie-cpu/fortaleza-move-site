@@ -100,14 +100,19 @@
     box.innerHTML = postsCache.map(function (p, i) {
       var img = safeImg(p.imagem_url);
       return '<article class="post' + (p.destaque ? " destaque" : "") + '" data-i="' + i + '" tabindex="0" role="button" aria-label="Abrir: ' + esc(p.titulo) + '">' +
-        '<div class="img">' + (img ? '<img loading="lazy" decoding="async" alt="" src="' + esc(img) + '">' : "") + "</div>" +
+        // foto inteira (sem cortar): a imagem fica "contida" no quadro e uma cópia desfocada preenche as sobras
+        '<div class="img' + (img ? " tem-foto" : "") + '">' + (img ? '<img class="fundo" aria-hidden="true" loading="lazy" decoding="async" alt="" src="' + esc(img) + '">' +
+          '<img class="foto" loading="lazy" decoding="async" alt="" src="' + esc(img) + '">' : "") + "</div>" +
         '<div class="body"><span class="tag">' + esc(p.categoria) + "</span>" +
         "<h3>" + esc(p.titulo) + "</h3><p>" + esc(p.resumo) + "</p>" +
         "<time>" + esc(dataBR(p.criado_em)) + "</time></div></article>";
     }).join("") + (daCopia ? tentar("Sem conexão no momento: mostrando as últimas novidades salvas neste aparelho.") : "");
     if (daCopia) document.getElementById("tentar-de-novo").addEventListener("click", function () { box.innerHTML = ""; carregarPosts(); });
-    box.querySelectorAll(".post img").forEach(function (im) {
-      im.addEventListener("error", function () { im.remove(); });   // foto que não carrega some, fica o fundo azul
+    box.querySelectorAll(".post img.foto").forEach(function (im) {
+      im.addEventListener("error", function () {                    // foto que não carrega: volta o logo no fundo azul
+        var q = im.parentNode; if (!q) return;
+        q.classList.remove("tem-foto"); q.innerHTML = "";
+      });
     });
     box.querySelectorAll(".post").forEach(function (el) {
       var abrirEste = function () { abrir(postsCache[Number(el.getAttribute("data-i"))]); };
@@ -122,7 +127,7 @@
     if (!p || !modal) return;
     var img = safeImg(p.imagem_url);
     modal.querySelector(".box").innerHTML =
-      (img ? '<div class="img"><img alt="" src="' + esc(img) + '"></div>' : "") +
+      (img ? '<div class="img"><img alt="" src="' + esc(img) + '" onerror="this.parentNode.remove()"></div>' : "") +   // na janela, a foto aparece inteira
       '<div class="in"><button class="x" type="button" aria-label="Fechar">×</button>' +
       '<span class="tag">' + esc(p.categoria) + "</span><h3>" + esc(p.titulo) + "</h3>" +
       '<p class="data">' + esc(dataBR(p.criado_em)) + "</p>" +
