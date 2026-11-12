@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fortaleza Mov — Corridas e entregas na sua cidade</title>
+<meta name="description" content="Fortaleza Mov: transporte de passageiros por aplicativo, mototáxi e entregas. Peça sua corrida ou seja motorista parceiro.">
+<meta name="theme-color" content="#0a1a3a">
+<style>
+:root{
+  --navy:#0a1a3a; --navy2:#12285a; --gold:#d4a73a; --gold2:#f0c75e;
+  --ink:#0d1b3d; --muted:#5b6785; --bg:#f6f7fb; --white:#fff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.6}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+header{position:sticky;top:0;z-index:10;background:rgba(10,26,58,.96);backdrop-filter:blur(6px)}
+header .wrap{display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-weight:800;letter-spacing:.5px;color:var(--white);font-size:1.15rem}
+.logo span{color:var(--gold)}
+nav{display:flex;gap:18px}
+nav a{color:#cfd7ee;font-size:.92rem}
+nav a:hover{color:var(--gold2)}
+.hero{background:linear-gradient(160deg,var(--navy) 0%,var(--navy2) 100%);color:var(--white);padding:72px 0 80px;text-align:center}
+.hero h1{font-size:clamp(2rem,6vw,3.2rem);line-height:1.15;margin-bottom:16px}
+.hero h1 em{font-style:normal;color:var(--gold)}
+.hero p{max-width:560px;margin:0 auto 28px;color:#cfd7ee;font-size:1.08rem}
+.btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-block;padding:13px 26px;border-radius:999px;font-weight:700;font-size:.98rem;transition:transform .15s}
+.btn:hover{transform:translateY(-2px)}
+.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--navy)}
+.btn-line{border:2px solid var(--gold);color:var(--gold2)}
+.soon{display:inline-block;margin-top:22px;font-size:.85rem;color:#aebbe0;border:1px dashed #3b4f86;padding:6px 14px;border-radius:999px}
+section{padding:64px 0}
+h2{font-size:1.7rem;text-align:center;margin-bottom:8px}
+.sub{text-align:center;color:var(--muted);margin-bottom:36px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px}
+.card{background:var(--white);border-radius:16px;padding:26px;box-shadow:0 4px 18px rgba(10,26,58,.07);border-top:4px solid var(--gold)}
+.card .ic{font-size:1.8rem;margin-bottom:10px}
+.card h3{margin-bottom:6px;font-size:1.08rem}
+.card p{color:var(--muted);font-size:.95rem}
+.dark{background:var(--navy);color:var(--white)}
+.dark .sub{color:#aebbe0}
+.steps{counter-reset:s;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+.step{background:var(--navy2);border-radius:16px;padding:24px;position:relative}
+.step::before{counter-increment:s;content:counter(s);display:inline-flex;width:34px;height:34px;border-radius:50%;background:var(--gold);color:var(--navy);font-weight:800;align-items:center;justify-content:center;margin-bottom:10px}
+.step p{color:#cfd7ee;font-size:.95rem}
+.cities{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.cities span{background:var(--white);padding:9px 18px;border-radius:999px;font-weight:600;box-shadow:0 2px 10px rgba(10,26,58,.07)}
+.cta{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--navy);text-align:center}
+.cta h2{margin-bottom:10px}
+.cta p{margin-bottom:22px}
+.cta .btn{background:var(--navy);color:var(--gold2)}
+footer{background:var(--navy);color:#aebbe0;text-align:center;padding:30px 20px;font-size:.88rem}
+footer a{color:var(--gold2)}
+@media(max-width:560px){nav{display:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a class="logo" href="#topo">FORTALEZA <span>MOV</span></a>
+    <nav>
+      <a href="#servicos">Serviços</a>
+      <a href="#como">Como funciona</a>
+      <a href="#motorista">Seja motorista</a>
+      <a href="#contato">Contato</a>
+    </nav>
+  </div>
+</header>
+
+<main id="topo">
+  <div class="hero">
+    <div class="wrap">
+      <h1>Sua corrida e sua entrega, <em>do jeito da nossa cidade</em></h1>
+      <p>Transporte por aplicativo, mototáxi e encomendas. Rápido, seguro e feito para quem mora aqui.</p>
+      <div class="btns">
+        <a class="btn btn-gold" href="https://wa.me/5564996472794?text=Ol%C3%A1!%20Quero%20saber%20mais%20sobre%20a%20Fortaleza%20Mov." target="_blank" rel="noopener">Falar no WhatsApp</a>
+        <a class="btn btn-line" href="#motorista">Quero ser motorista</a>
+      </div>
+      <div class="soon">📱 Aplicativos em breve na Google Play</div>
+    </div>
+  </div>
+
+  <section id="servicos">
+    <div class="wrap">
+      <h2>O que a Fortaleza Mov faz por você</h2>
+      <p class="sub">Um só aplicativo para se locomover e receber o que precisa.</p>
+      <div class="grid">
+        <div class="card"><div class="ic">🚗</div><h3>Corrida de carro</h3><p>Chame um motorista parceiro e siga com conforto e segurança até o destino.</p></div>
+        <div class="card"><div class="ic">🏍️</div><h3>Mototáxi</h3><p>Chegue mais rápido, com preço justo e motoristas cadastrados.</p></div>
+        <div class="card"><div class="ic">📦</div><h3>Encomendas</h3><p>Envie por moto ou por carro, você escolhe o que combina mais com a sua entrega.</p></div>
+        <div class="card"><div class="ic">🛍️</div><h3>Entregas do comércio</h3><p>Lojas e comércios locais com entregadores por perto.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="como" class="dark">
+    <div class="wrap">
+      <h2>Como funciona</h2>
+      <p class="sub">Simples para o passageiro e para o motorista.</p>
+      <div class="steps">
+        <div class="step"><h3>Abra o app</h3><p>Informe de onde você sai e para onde vai.</p></div>
+        <div class="step"><h3>Veja o preço</h3><p>Você confere o valor antes de confirmar a corrida.</p></div>
+        <div class="step"><h3>Um motorista aceita</h3><p>Acompanhe o motorista chegando pelo mapa, em tempo real.</p></div>
+        <div class="step"><h3>Boa viagem</h3><p>Chegou ao destino, é só finalizar a corrida.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="cidades">
+    <div class="wrap">
+      <h2>Onde vamos começar</h2>
+      <p class="sub">Primeiras cidades da Fortaleza Mov.</p>
+      <div class="cities">
+        <span>Goiatuba (GO)</span>
+        <span>Bom Jesus de Goiás (GO)</span>
+        <span>Buriti Alegre (GO)</span>
+        <span>Joviânia (GO)</span>
+        <span>Teutônia (RS)</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="motorista" class="cta">
+    <div class="wrap">
+      <h2>Seja um motorista parceiro</h2>
+      <p>Dirija de carro ou de moto, faça seus próprios horários e ganhe com cada corrida. Fale com a gente para fazer o seu cadastro.</p>
+      <a class="btn" href="https://wa.me/5564996472794?text=Ol%C3%A1!%20Quero%20ser%20motorista%20da%20Fortaleza%20Mov." target="_blank" rel="noopener">Quero me cadastrar</a>
+    </div>
+  </section>
+
+  <section id="contato">
+    <div class="wrap">
+      <h2>Fale com a gente</h2>
+      <p class="sub">Dúvidas, parcerias ou cadastro de motorista: chame no WhatsApp.</p>
+      <div class="btns"><a class="btn btn-gold" style="color:var(--navy)" href="https://wa.me/5564996472794" target="_blank" rel="noopener">Abrir WhatsApp</a></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>© <span id="ano">2026</span> Fortaleza Mov — uma plataforma desenvolvida pela <a href="https://fortalezadigitalsecurity.com.br">Fortaleza Digital Security</a>.</p>
+</footer>
+<script>document.getElementById('ano').textContent=new Date().getFullYear();</script>
+</body>
+</html>
