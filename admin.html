@@ -29,6 +29,20 @@
   <p style="margin-top:14px"><a href="#" id="esqueci" style="color:var(--muted);font-size:.88rem;text-decoration:underline">Esqueci a senha</a></p>
 </div>
 
+<!-- definir nova senha (recuperação ou convite) -->
+<div id="tela-senha" class="login" style="display:none">
+  <h1>Definir nova senha</h1>
+  <p>Escolha uma senha forte, com pelo menos 10 caracteres.</p>
+  <form id="form-senha">
+    <label for="nova1">Nova senha</label>
+    <input id="nova1" type="password" autocomplete="new-password" minlength="10" required>
+    <label for="nova2">Repita a nova senha</label>
+    <input id="nova2" type="password" autocomplete="new-password" minlength="10" required>
+    <div id="msg-senha"></div>
+    <button class="btn btn-gold" style="width:100%;margin-top:18px" type="submit">Salvar senha</button>
+  </form>
+</div>
+
 <!-- painel -->
 <div id="tela-painel" class="adm-wrap" style="display:none">
   <div class="tabs">

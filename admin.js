@@ -20,19 +20,48 @@
     return !r.error && !!r.data;
   }
 
+  // Link de recuperação de senha ou de convite: o Supabase devolve o usuário aqui com type=recovery|invite no endereço.
+  var modoSenha = /type=(recovery|invite)/.test(location.hash);
+
+  sb.auth.onAuthStateChange(function (ev) {
+    if (ev === "PASSWORD_RECOVERY") { modoSenha = true; mostrarSenha(); }
+  });
+
   async function iniciar() {
     var s = await sb.auth.getSession();
     var user = s.data && s.data.session && s.data.session.user;
+    if (modoSenha && user) return mostrarSenha();
     if (user && (await ehAdmin(user))) mostrarPainel();
     else { if (user) await sb.auth.signOut(); mostrarLogin(); }
   }
-  function mostrarLogin() {
-    $("tela-login").style.display = "block"; $("tela-painel").style.display = "none"; $("btn-sair").style.display = "none";
+  function telas(qual) {
+    $("tela-login").style.display = qual === "login" ? "block" : "none";
+    $("tela-senha").style.display = qual === "senha" ? "block" : "none";
+    $("tela-painel").style.display = qual === "painel" ? "block" : "none";
+    $("btn-sair").style.display = qual === "painel" ? "inline-block" : "none";
   }
+  function mostrarLogin() { telas("login"); }
+  function mostrarSenha() { telas("senha"); }
   function mostrarPainel() {
-    $("tela-login").style.display = "none"; $("tela-painel").style.display = "block"; $("btn-sair").style.display = "inline-block";
+    telas("painel");
     carregarPosts(); carregarTextos();
   }
+
+  $("form-senha").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var m = $("msg-senha");
+    var a = $("nova1").value, b = $("nova2").value;
+    if (a.length < 10) return msg(m, "err", "Use pelo menos 10 caracteres.");
+    if (a !== b) return msg(m, "err", "As duas senhas não são iguais.");
+    var r = await sb.auth.updateUser({ password: a });
+    if (r.error) return msg(m, "err", "Não foi possível salvar a senha. Peça um novo link e tente de novo.");
+    $("nova1").value = ""; $("nova2").value = "";
+    modoSenha = false;
+    history.replaceState(null, "", location.pathname);
+    var u = r.data && r.data.user;
+    if (u && (await ehAdmin(u))) mostrarPainel();
+    else { await sb.auth.signOut(); mostrarLogin(); msg($("msg-login"), "err", "Esta conta não tem acesso ao painel."); }
+  });
 
   $("form-login").addEventListener("submit", async function (e) {
     e.preventDefault();
