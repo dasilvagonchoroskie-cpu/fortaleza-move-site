@@ -1,0 +1,17 @@
+{
+  "name": "Fortaleza Mov",
+  "short_name": "Fortaleza Mov",
+  "description": "Corridas de carro, mototáxi e encomendas. Seja passageiro, motorista parceiro ou use as entregas para o seu comércio.",
+  "lang": "pt-BR",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a1a3a",
+  "theme_color": "#0a1a3a",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
