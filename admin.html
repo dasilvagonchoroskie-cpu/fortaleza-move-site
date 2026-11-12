@@ -92,6 +92,7 @@
           </div>
         </div>
         <img id="p-preview" class="preview" alt="" style="display:none">
+        <div class="preview-acoes" id="foto-acoes" style="display:none"><button type="button" class="btn btn-sm btn-ghost" id="btn-remover-foto">Remover foto</button><span class="dica" id="foto-dica" style="margin:0"></span></div>
         <label class="chk"><input id="p-pub" type="checkbox" checked> Publicado (visível no site)</label>
         <label class="chk"><input id="p-dest" type="checkbox"> Destaque (aparece primeiro)</label>
         <div id="msg-post"></div>
@@ -141,7 +142,7 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script src="admin.js"></script>
 <script>

@@ -1,7 +1,7 @@
 // Service worker da Fortaleza Move.
 // Estratégia: rede primeiro (o site sempre mostra a versão mais nova) e, sem internet, usa a cópia guardada.
 // Não guarda nada do painel administrativo nem de outros domínios (Supabase).
-var VERSAO = "fm-v6";
+var VERSAO = "fm-v7";
 var BASICO = ["./", "index.html", "passageiro.html", "motorista.html", "comercio.html", "novidades.html",
   "404.html", "style.css", "site.js", "config.js", "logo.png", "icon-192.png"];
 
@@ -25,7 +25,8 @@ self.addEventListener("fetch", function (e) {
   if (/\/admin(\.html|\.js)?$/.test(url.pathname)) return;               // painel nunca é guardado
   e.respondWith(
     caches.match(req).then(function (guardado) {
-      var rede = fetch(req).then(function (res) {
+      // CSS, JS e imagens: sempre confere com o servidor (no-cache = revalida), para o app nunca ficar preso em versão antiga.
+      var rede = (req.mode === "navigate" ? fetch(req) : fetch(req, { cache: "no-cache" })).then(function (res) {
         if (res && res.ok) { var copia = res.clone(); caches.open(VERSAO).then(function (c) { c.put(req, copia); }); }
         return res;
       });

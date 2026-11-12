@@ -155,6 +155,28 @@
     });
   });
 
+  // ---------- fotos: lixeira recuperável ----------
+  // Foto trocada, removida ou de publicação apagada NÃO é apagada: vai para "lixeira/AAAA-MM-DD/" no mesmo depósito
+  // (pode ser recuperada pelo Supabase > Storage). Só move se nenhuma outra publicação usa a mesma foto.
+  var PREFIXO_FOTO = C.SUPABASE_URL.replace(/\/$/, "") + "/storage/v1/object/public/" + C.BUCKET + "/";
+  async function moverParaLixeira(url, ignorarId) {
+    try {
+      if (!url || url.indexOf(PREFIXO_FOTO) !== 0) return true;
+      var caminho = decodeURIComponent(url.slice(PREFIXO_FOTO.length).split("?")[0]);
+      if (!/^posts\/[^/]+$/.test(caminho)) return true;
+      var r = await sb.from("site_posts").select("id").eq("imagem_url", url);
+      if (r.error) return false;                                   // sem confirmar as referências, não mexe
+      if ((r.data || []).some(function (x) { return x.id !== ignorarId; })) return true;   // ainda em uso
+      var m = await sb.storage.from(C.BUCKET).move(caminho, "lixeira/" + new Date().toISOString().slice(0, 10) + "/" + caminho.slice(6));
+      return !m.error;
+    } catch (e) { return false; }
+  }
+  function avisoLixeira(ok) {
+    if (ok) return;
+    var ml = $("msg-lista");
+    ml.insertAdjacentHTML("beforeend", '<div class="msg err" role="status">A foto antiga não pôde ir para a lixeira; ela continua guardada no depósito.</div>');
+  }
+
   // ---------- publicações ----------
   async function carregarPosts() {
     var box = $("lista-posts");
@@ -196,15 +218,28 @@
     $("p-img").value = "";
     var pv = $("p-preview");
     if (imagemAtual && /^https:\/\//.test(imagemAtual)) { pv.src = imagemAtual; pv.style.display = "block"; } else pv.style.display = "none";
+    $("foto-acoes").style.display = imagemAtual ? "flex" : "none"; $("foto-dica").textContent = "";
     msg($("msg-post"), "", "");
     $("editor").style.display = "block";
     $("editor").scrollIntoView({ behavior: "smooth" });
   }
   $("btn-nova").addEventListener("click", function () { abrirEditor(null); });
+  $("btn-remover-foto").addEventListener("click", function () {
+    imagemAtual = null; $("p-img").value = "";
+    $("p-preview").style.display = "none";
+    $("foto-dica").textContent = "A foto sai da publicação quando você tocar em Salvar.";
+    this.style.display = "none";
+  });
+  $("p-img").addEventListener("change", function () {
+    var f = this.files[0], pv = $("p-preview");
+    if (!f || !/^image\/(jpeg|png|webp)$/.test(f.type)) return;
+    try { pv.src = URL.createObjectURL(f); pv.style.display = "block"; } catch (e) {}
+  });
   $("btn-cancelar").addEventListener("click", function () { $("editor").style.display = "none"; });
 
   async function apagar(id) {
-    if (!confirm("Apagar esta publicação? Não dá para desfazer.")) return;
+    if (!confirm("Apagar esta publicação? Ela sai do site e não dá para desfazer. A foto, se houver, vai para a lixeira do depósito.")) return;
+    var alvo = posts.find(function (x) { return x.id === id; }) || {};
     var ml = $("msg-lista");
     try {
       var r = await sb.from("site_posts").delete().eq("id", id).select("id");
@@ -212,6 +247,7 @@
       if (!r.data || !r.data.length) return msg(ml, "err", "Não foi possível apagar (sem permissão ou já removida). Recarregue a lista.");
       msg(ml, "ok", "Publicação apagada.");
     } catch (e) { return msg(ml, "err", erroTxt(e, "Não foi possível apagar.")); }
+    if (alvo.imagem_url) avisoLixeira(await moverParaLixeira(alvo.imagem_url, id));
     carregarPosts();
   }
 
@@ -223,7 +259,8 @@
     await ocupado(this, async function () {
       msg(m, "ok", "Salvando…");
       try {
-        var url = imagemAtual;
+        var url = imagemAtual, enviada = null;
+        var anterior = editandoId ? ((posts.find(function (x) { return x.id === editandoId; }) || {}).imagem_url || null) : null;
         var f = $("p-img").files[0];
         if (f) {
           if (f.size > 5 * 1024 * 1024) return msg(m, "err", "A imagem passa de 5 MB. Nada foi salvo.");
@@ -233,7 +270,7 @@
           var path = "posts/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "." + ext;
           var up = await sb.storage.from(C.BUCKET).upload(path, f, { contentType: f.type, upsert: false });
           if (up.error) return msg(m, "err", erroTxt(up.error, "Não foi possível enviar a foto. A publicação NÃO foi salva.") );
-          url = sb.storage.from(C.BUCKET).getPublicUrl(path).data.publicUrl;
+          url = enviada = sb.storage.from(C.BUCKET).getPublicUrl(path).data.publicUrl;
         }
         var dados = {
           titulo: titulo,
@@ -247,10 +284,11 @@
         };
         var q = editandoId ? sb.from("site_posts").update(dados).eq("id", editandoId) : sb.from("site_posts").insert(dados);
         var r = await q.select("id");
-        if (r.error) return msg(m, "err", erroTxt(r.error, "Não foi possível salvar a publicação."));
-        if (!r.data || !r.data.length) return msg(m, "err", "A publicação não foi salva (sem permissão). Saia e entre de novo.");
+        var falha = r.error ? erroTxt(r.error, "Não foi possível salvar a publicação.") : (!r.data || !r.data.length) ? "A publicação não foi salva (sem permissão). Saia e entre de novo." : null;
+        if (falha) { if (enviada) moverParaLixeira(enviada, null); return msg(m, "err", falha); }
         $("editor").style.display = "none";
         msg($("msg-lista"), "ok", dados.publicado ? "Publicação salva e no ar." : "Rascunho salvo (não aparece no site).");
+        if (anterior && anterior !== url) avisoLixeira(await moverParaLixeira(anterior, editandoId));
         carregarPosts();
       } catch (er) { msg(m, "err", erroTxt(er, "Não foi possível salvar. Tente de novo.")); }
     });
