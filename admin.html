@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Painel — Fortaleza Mov</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="admin">
+
+<div class="adm-bar"><div class="wrap">
+  <a class="logo" href="index.html"><span class="mark">M</span><span>PAINEL <b>MOV</b></span></a>
+  <button id="btn-sair" class="btn btn-sm btn-ghost" style="display:none">Sair</button>
+</div></div>
+
+<!-- login -->
+<div id="tela-login" class="login">
+  <h1>Entrar no painel</h1>
+  <p>Acesso restrito ao administrador da Fortaleza Mov.</p>
+  <form id="form-login">
+    <label for="email">E-mail</label>
+    <input id="email" type="email" autocomplete="username" required>
+    <label for="senha">Senha</label>
+    <input id="senha" type="password" autocomplete="current-password" required>
+    <div id="msg-login"></div>
+    <button class="btn btn-gold" style="width:100%;margin-top:18px" type="submit">Entrar</button>
+  </form>
+  <p style="margin-top:14px"><a href="#" id="esqueci" style="color:var(--muted);font-size:.88rem;text-decoration:underline">Esqueci a senha</a></p>
+</div>
+
+<!-- painel -->
+<div id="tela-painel" class="adm-wrap" style="display:none">
+  <div class="tabs">
+    <button data-tab="posts" class="on">Publicações</button>
+    <button data-tab="textos">Textos do site</button>
+  </div>
+
+  <div id="tab-posts">
+    <div class="box-adm">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <h2 style="font-size:1.15rem">Suas publicações</h2>
+        <button id="btn-nova" class="btn btn-sm btn-gold">+ Nova publicação</button>
+      </div>
+      <div id="lista-posts" style="margin-top:10px"></div>
+    </div>
+
+    <div id="editor" class="box-adm" style="display:none">
+      <h2 id="editor-titulo" style="font-size:1.15rem">Nova publicação</h2>
+      <form id="form-post">
+        <label for="p-titulo">Título</label>
+        <input id="p-titulo" maxlength="140" required>
+        <label for="p-resumo">Resumo (aparece no cartão)</label>
+        <input id="p-resumo" maxlength="220">
+        <label for="p-corpo">Texto completo</label>
+        <textarea id="p-corpo"></textarea>
+        <div class="row2">
+          <div>
+            <label for="p-cat">Categoria</label>
+            <select id="p-cat">
+              <option>Novidades</option><option>Aviso</option><option>Motoristas</option>
+              <option>Encomendas</option><option>Cidades</option><option>Promoção</option>
+            </select>
+          </div>
+          <div>
+            <label for="p-img">Imagem (JPG, PNG ou WebP, até 5 MB)</label>
+            <input id="p-img" type="file" accept="image/jpeg,image/png,image/webp">
+          </div>
+        </div>
+        <img id="p-preview" class="preview" alt="" style="display:none">
+        <label class="chk"><input id="p-pub" type="checkbox" checked> Publicado (visível no site)</label>
+        <label class="chk"><input id="p-dest" type="checkbox"> Destaque (aparece primeiro)</label>
+        <div id="msg-post"></div>
+        <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+          <button class="btn btn-gold" type="submit">Salvar</button>
+          <button class="btn btn-ghost" type="button" id="btn-cancelar">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="tab-textos" style="display:none">
+    <div class="box-adm">
+      <h2 style="font-size:1.15rem">Textos do site</h2>
+      <form id="form-textos">
+        <label for="t-aviso">Faixa de aviso no topo (deixe vazio para esconder)</label>
+        <input id="t-aviso" maxlength="160">
+        <label for="t-titulo">Título principal</label>
+        <input id="t-titulo" maxlength="140">
+        <label for="t-sub">Texto de apresentação</label>
+        <textarea id="t-sub" style="min-height:90px"></textarea>
+        <label for="t-wa">WhatsApp (só números, com 55 e DDD)</label>
+        <input id="t-wa" inputmode="numeric" maxlength="15">
+        <label for="t-cidades">Cidades (separadas por vírgula)</label>
+        <input id="t-cidades">
+        <div id="msg-textos"></div>
+        <button class="btn btn-gold" style="margin-top:18px" type="submit">Salvar textos</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>
