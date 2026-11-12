@@ -140,18 +140,24 @@
   carregarPosts();
 })();
 
-// WhatsApp direto: no celular abre o aplicativo na hora (sem passar pela página intermediária do wa.me, que deixava a tela em branco).
+// WhatsApp direto: no celular abre o aplicativo sem sair da página (sem tela em branco).
+// Android: "intent" do Chrome (se não tiver o app, o próprio Chrome abre o wa.me). iPhone: esquema whatsapp://.
 (function () {
-  var movel = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  var ua = navigator.userAgent, android = /Android/i.test(ua), ios = /iPhone|iPad|iPod/i.test(ua);
+  if (!android && !ios) return;
   document.addEventListener("click", function (e) {
     var a = e.target.closest && e.target.closest("a[href*='wa.me/']");
-    if (!a || !movel) return;
+    if (!a) return;
     var m = a.href.match(/wa\.me\/(\d+)(?:\?text=([^&#]*))?/);
     if (!m) return;
     e.preventDefault();
-    var web = a.href;
-    var app = "whatsapp://send?phone=" + m[1] + (m[2] ? "&text=" + m[2] : "");
-    window.location.href = app;
-    setTimeout(function () { if (!document.hidden) window.open(web, "_blank", "noopener"); }, 1500);
+    var q = "phone=" + m[1] + (m[2] ? "&text=" + m[2] : "");
+    var url = android
+      ? "intent://send?" + q + "#Intent;scheme=whatsapp;package=com.whatsapp;S.browser_fallback_url=" + encodeURIComponent(a.href) + ";end"
+      : "whatsapp://send?" + q;
+    var l = document.createElement("a");
+    l.href = url; l.style.display = "none";
+    document.body.appendChild(l); l.click();
+    setTimeout(function () { l.remove(); }, 500);
   });
 })();
