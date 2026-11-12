@@ -1,7 +1,7 @@
 // Service worker da Fortaleza Mov.
 // Estratégia: rede primeiro (o site sempre mostra a versão mais nova) e, sem internet, usa a cópia guardada.
 // Não guarda nada do painel administrativo nem de outros domínios (Supabase).
-var VERSAO = "fm-v1";
+var VERSAO = "fm-v2";
 var BASICO = ["./", "index.html", "passageiro.html", "motorista.html", "comercio.html", "novidades.html",
   "404.html", "style.css", "site.js", "config.js", "logo.png", "icon-192.png"];
 
