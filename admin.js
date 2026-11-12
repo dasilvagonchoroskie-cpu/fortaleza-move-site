@@ -189,6 +189,28 @@
   // ---------- textos ----------
   var CHAVES = { aviso_topo: "t-aviso", hero_titulo: "t-titulo", hero_subtitulo: "t-sub", whatsapp: "t-wa", cidades: "t-cidades" };
 
+  function cidades() { return $("t-cidades").value.split(",").map(function (c) { return c.trim(); }).filter(Boolean); }
+  function pintarCidades() {
+    var box = $("cid-chips"); box.innerHTML = "";
+    var l = cidades();
+    if (!l.length) { box.innerHTML = '<span class="vazio">Nenhuma cidade ainda. A seção está escondida no site.</span>'; return; }
+    l.forEach(function (c, i) {
+      var s = document.createElement("span"); s.textContent = c;
+      var b = document.createElement("button"); b.type = "button"; b.textContent = "×"; b.setAttribute("aria-label", "Remover " + c);
+      b.addEventListener("click", function () { var x = cidades(); x.splice(i, 1); $("t-cidades").value = x.join(", "); pintarCidades(); });
+      s.appendChild(b); box.appendChild(s);
+    });
+  }
+  function addCidade() {
+    var v = $("nova-cidade").value.replace(/,/g, " ").trim();
+    if (!v) return;
+    var x = cidades();
+    if (!x.some(function (c) { return c.toLowerCase() === v.toLowerCase(); })) x.push(v);
+    $("t-cidades").value = x.join(", "); $("nova-cidade").value = ""; pintarCidades();
+  }
+  $("btn-cid-add").addEventListener("click", addCidade);
+  $("nova-cidade").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addCidade(); } });
+
   async function carregarTextos() {
     var r = await sb.from("site_settings").select("chave,valor");
     var salvo = {};
@@ -196,11 +218,13 @@
     Object.keys(CHAVES).forEach(function (k) {
       $(CHAVES[k]).value = salvo[k] != null ? salvo[k] : C.DEFAULTS[k] || "";
     });
+    pintarCidades();
   }
 
   $("form-textos").addEventListener("submit", async function (e) {
     e.preventDefault();
     var m = $("msg-textos");
+    addCidade();
     var wa = $("t-wa").value.replace(/\D/g, "");
     if (wa && (wa.length < 12 || wa.length > 13)) return msg(m, "err", "WhatsApp: use 55 + DDD + número (ex.: 5564999999999).");
     $("t-wa").value = wa;

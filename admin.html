@@ -114,8 +114,11 @@
         <textarea id="t-sub" style="min-height:90px"></textarea>
         <label for="t-wa">WhatsApp (só números, com 55 e DDD)</label>
         <input id="t-wa" inputmode="numeric" maxlength="15">
-        <label for="t-cidades">Cidades (separadas por vírgula)</label>
-        <input id="t-cidades">
+        <label for="nova-cidade">Cidades atendidas</label>
+        <p class="dica">Só aparecem no site as cidades listadas aqui. Sem nenhuma cidade, a seção some do site. Acrescente uma cidade quando a Fortaleza Move começar a atender nela.</p>
+        <div id="cid-chips" class="cid-chips"></div>
+        <div class="cid-add"><input id="nova-cidade" maxlength="60" placeholder="Ex.: Goiatuba (GO)" autocomplete="off"><button id="btn-cid-add" class="btn btn-sm btn-navy" type="button">Adicionar</button></div>
+        <input id="t-cidades" type="hidden">
         <div id="msg-textos"></div>
         <button class="btn btn-gold" style="margin-top:18px" type="submit">Salvar textos</button>
       </form>

@@ -9,6 +9,6 @@ window.MOV_CONFIG = {
     hero_subtitulo: "Transporte de passageiros por aplicativo, mototáxi e entrega de encomendas por moto ou carro. Rápido, seguro e feito para quem mora aqui.",
     whatsapp: "5564996472794",
     aviso_topo: "",
-    cidades: "Goiatuba (GO), Bom Jesus de Goiás (GO), Buriti Alegre (GO), Joviânia (GO), Teutônia (RS)"
+    cidades: ""
   }
 };

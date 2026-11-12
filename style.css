@@ -199,3 +199,10 @@ footer.rodape .links a{padding:6px 2px}
 @media(max-width:360px){.bottomnav a{font-size:.62rem}}
 [hidden]{display:none!important}
 .adm-bar .wrap>*{margin-left:8px}
+
+.dica{color:var(--muted);font-size:.9rem;margin:2px 0 10px}
+.cid-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.cid-chips span{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:6px 6px 6px 14px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+.cid-chips .vazio{background:none;border:0;color:var(--muted);font-weight:400;padding:0}
+.cid-chips button{border:0;background:var(--navy3);color:#fff;width:26px;height:26px;border-radius:50%;font-size:1.05rem;line-height:1;cursor:pointer}
+.cid-add{display:flex;gap:8px;align-items:center}.cid-add input{flex:1;margin:0}

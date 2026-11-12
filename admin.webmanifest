@@ -5,7 +5,7 @@
   "description": "Painel administrativo do site da Fortaleza Move.",
   "lang": "pt-BR",
   "start_url": "./admin.html",
-  "scope": "./",
+  "scope": "./admin.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#061a4a",

@@ -37,8 +37,10 @@
     }
     var ci = document.getElementById("cidades-lista");
     if (ci) {
-      ci.innerHTML = String(cfg.cidades || "").split(",").map(function (c) { return c.trim(); }).filter(Boolean)
-        .map(function (c) { return "<span>" + esc(c) + "</span>"; }).join("");
+      var lista = String(cfg.cidades || "").split(",").map(function (c) { return c.trim(); }).filter(Boolean);
+      var sec = ci.closest("section");
+      ci.innerHTML = lista.map(function (c) { return "<span>" + esc(c) + "</span>"; }).join("");
+      if (sec) sec.style.display = lista.length ? "" : "none";   // sem cidades cadastradas, a seção some
     }
   }
 
@@ -152,12 +154,14 @@
     if (!m) return;
     e.preventDefault();
     var q = "phone=" + m[1] + (m[2] ? "&text=" + m[2] : "");
-    var url = android
+    var instalado = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+    var url = (android && !instalado)
       ? "intent://send?" + q + "#Intent;scheme=whatsapp;package=com.whatsapp;S.browser_fallback_url=" + encodeURIComponent(a.href) + ";end"
       : "whatsapp://send?" + q;
     var l = document.createElement("a");
     l.href = url; l.style.display = "none";
     document.body.appendChild(l); l.click();
     setTimeout(function () { l.remove(); }, 500);
+    if (instalado) setTimeout(function () { if (!document.hidden) window.open(a.href, "_blank", "noopener"); }, 1800);
   });
 })();
