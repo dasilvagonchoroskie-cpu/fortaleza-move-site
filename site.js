@@ -142,19 +142,57 @@
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
     window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
   }
+  // Faixa "Instalar o aplicativo" logo abaixo do topo (mesma ideia do botão do painel).
+  // Android/computador: aparece quando o navegador libera a instalação. iPhone (Safari): mostra como adicionar.
+  // Some quando o app já está instalado/aberto como app, e o "×" esconde por 14 dias.
   var btnInst = document.getElementById("btn-instalar");
-  var eventoInstalar = null;
+  var eventoInstalar = null, faixa = null;
+  var noApp = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+  var CHAVE_FX = "fm-faixa-instalar";
+  function fechadaRecente() { try { return Date.now() < Number(localStorage.getItem(CHAVE_FX) || 0); } catch (e) { return false; } }
+  function esconderFaixa(lembrar) {
+    if (faixa) { faixa.remove(); faixa = null; }
+    if (lembrar) { try { localStorage.setItem(CHAVE_FX, String(Date.now() + 14 * 864e5)); } catch (e) {} }
+  }
+  function mostrarFaixa(ios) {
+    if (noApp || faixa || fechadaRecente()) return;
+    var topo = document.querySelector("header.top");
+    if (!topo) return;
+    faixa = document.createElement("div");
+    faixa.className = "faixa-instalar";
+    faixa.setAttribute("role", "region");
+    faixa.setAttribute("aria-label", "Instalar o aplicativo");
+    faixa.innerHTML = '<div class="wrap"><img src="icon-192.png" alt="" width="36" height="36">' +
+      '<p><b>App Fortaleza Move</b><span>' + (ios ? "Toque em Compartilhar <span aria-hidden=\"true\">⬆︎</span> e depois em “Adicionar à Tela de Início”." : "Instale no seu celular e abra com um toque.") + "</span></p>" +
+      (ios ? "" : '<button type="button" class="btn btn-sm btn-gold" data-fx="instalar">Instalar</button>') +
+      '<button type="button" class="fx-x" data-fx="fechar" aria-label="Fechar aviso de instalação">×</button></div>';
+    topo.insertAdjacentElement("afterend", faixa);
+    faixa.addEventListener("click", function (e) {
+      var a = e.target.closest("[data-fx]"); if (!a) return;
+      if (a.getAttribute("data-fx") === "fechar") esconderFaixa(true); else instalar();
+    });
+  }
+  async function instalar() {
+    if (!eventoInstalar) return;
+    var ev = eventoInstalar; eventoInstalar = null;            // o pedido do navegador só pode ser usado uma vez
+    ev.prompt();
+    var escolha = null; try { escolha = await ev.userChoice; } catch (e) {}
+    esconderFaixa(!(escolha && escolha.outcome === "accepted"));
+    if (btnInst) btnInst.hidden = true;
+  }
   window.addEventListener("beforeinstallprompt", function (e) {
     e.preventDefault(); eventoInstalar = e;
     if (btnInst) btnInst.hidden = false;
+    mostrarFaixa(false);
   });
-  if (btnInst) btnInst.addEventListener("click", async function () {
-    if (!eventoInstalar) return;
-    eventoInstalar.prompt();
-    try { await eventoInstalar.userChoice; } catch (e) {}
-    eventoInstalar = null; btnInst.hidden = true;
-  });
-  window.addEventListener("appinstalled", function () { if (btnInst) btnInst.hidden = true; });
+  if (btnInst) btnInst.addEventListener("click", instalar);
+  window.addEventListener("appinstalled", function () { esconderFaixa(false); if (btnInst) btnInst.hidden = true; });
+  // iPhone/iPad no Safari não tem botão de instalar: mostra a instrução (não aparece em navegadores embutidos nem em outros navegadores do iPhone).
+  (function () {
+    var ua = navigator.userAgent;
+    var iosSafari = /iPhone|iPad|iPod/.test(ua) && /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|FBAN|FBAV|Instagram|Line\//.test(ua);
+    if (iosSafari) mostrarFaixa(true);
+  })();
 
   aplicarTextos();
   carregarTextos();

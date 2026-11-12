@@ -1,5 +1,7 @@
 (function () {
   var C = window.MOV_CONFIG;
+  // Endereço como chegou (antes de a biblioteca do Supabase ler e limpar o link do e-mail).
+  var LINK = new URLSearchParams((location.hash || "").replace(/^#/, "") + "&" + (location.search || "").replace(/^\?/, ""));
   var sb = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
   var $ = function (id) { return document.getElementById(id); };
   var editandoId = null;
@@ -40,7 +42,18 @@
   }
 
   // Link de recuperação de senha ou de convite: o Supabase devolve o usuário aqui com type=recovery|invite no endereço.
-  var modoSenha = /type=(recovery|invite)/.test(location.hash);
+  var modoSenha = /^(recovery|invite)$/.test(LINK.get("type") || "");
+  // Link inválido: o Supabase devolve error_code (ex.: otp_expired = expirado, já usado ou substituído por um e-mail mais novo).
+  var erroLink = LINK.get("error_code") || LINK.get("error");
+  if (erroLink) {
+    modoSenha = false;
+    history.replaceState(null, "", location.pathname);
+    setTimeout(function () {
+      msg($("msg-login"), "err", /expired|otp|access_denied/i.test(erroLink + " " + (LINK.get("error_description") || ""))
+        ? "Este link de recuperação expirou, já foi usado ou foi substituído por um e-mail mais novo. Peça um novo em “Esqueci a senha” e abra só o e-mail MAIS RECENTE, uma vez."
+        : "O link do e-mail não pôde ser usado. Peça um novo em “Esqueci a senha”.");
+    }, 0);
+  }
 
   sb.auth.onAuthStateChange(function (ev) {
     if (ev === "PASSWORD_RECOVERY") { modoSenha = true; mostrarSenha(); }
@@ -113,14 +126,27 @@
     });
   });
 
+  // Um pedido por vez e espera de 60 s: cada novo e-mail invalida o link do anterior.
+  var enviandoRec = false, esperaRec = 0;
   $("esqueci").addEventListener("click", async function (e) {
     e.preventDefault();
+    if (enviandoRec) return;
+    if (Date.now() < esperaRec) return msg($("msg-login"), "ok", "Já enviamos um link. Aguarde " + Math.ceil((esperaRec - Date.now()) / 1000) + " s para pedir outro (cada novo e-mail cancela o anterior).");
     var em = $("email").value.trim();
     if (!em) return msg($("msg-login"), "err", "Digite seu e-mail acima e toque de novo em “Esqueci a senha”.");
+    enviandoRec = true; msg($("msg-login"), "ok", "Enviando…");
     try {
       var r = await sb.auth.resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname });
-      msg($("msg-login"), r.error ? "err" : "ok", r.error ? erroTxt(r.error, "Não foi possível enviar agora. Tente mais tarde.") : "Se o e-mail estiver cadastrado, você receberá o link de recuperação.");
+      if (r.error) {
+        var lim = Number(r.error.status) === 429 || /rate limit/i.test(r.error.message || "");
+        msg($("msg-login"), "err", lim ? "Limite de e-mails atingido (o envio gratuito do Supabase permite poucos por hora). Use o último e-mail que chegou ou tente de novo em cerca de 1 hora."
+          : erroTxt(r.error, "Não foi possível enviar agora. Tente mais tarde."));
+      } else {
+        esperaRec = Date.now() + 60000;
+        msg($("msg-login"), "ok", "Pronto. Se o e-mail estiver cadastrado, o link chega em instantes (veja também Spam). Abra só o e-mail mais recente.");
+      }
     } catch (er) { msg($("msg-login"), "err", erroTxt(er, "Não foi possível enviar agora. Tente mais tarde.")); }
+    finally { enviandoRec = false; }
   });
 
   $("btn-sair").addEventListener("click", async function () {
