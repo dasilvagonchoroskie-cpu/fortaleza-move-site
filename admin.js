@@ -182,9 +182,17 @@
   });
 
   // ---------- fotos: reduz o peso antes de enviar ----------
-  // Fotos grandes (ex.: 2 MB, 4000 px) deixam o site lento no celular. Reduz para no máximo 1600 px no lado maior,
-  // mantendo a proporção (nada é cortado). Usa WebP quando o aparelho suporta; senão JPEG (PNG transparente fica como está).
-  // Se não ficar menor, envia o arquivo original.
+  // Fotos grandes (ex.: 2 MB, 4000 px) deixam o site lento no celular. Reduz para no máximo 1200 px no lado maior,
+  // mantendo a proporção (nada é cortado). Usa WebP quando o aparelho suporta.
+  // Sem WebP (ex.: iPhone/Safari): PNG sem transparência vira JPEG (antes o PNG pesado seguia sem reduzir);
+  // PNG com transparência continua PNG, só que reduzido. Se não ficar menor, envia o arquivo original.
+  function temTransparencia(ctx, w, h) {
+    try {
+      var d = ctx.getImageData(0, 0, w, h).data;
+      for (var i = 3; i < d.length; i += 4) if (d[i] < 250) return true;
+      return false;
+    } catch (e) { return true; }                                 // na dúvida, trata como transparente (não estraga a imagem)
+  }
   function otimizarFoto(f) {
     return new Promise(function (ok) {
       if (f.size < 350 * 1024) return ok(f);
@@ -192,14 +200,17 @@
       im.onerror = function () { URL.revokeObjectURL(url); ok(f); };
       im.onload = function () {
         try {
-          var max = 1600, w = im.naturalWidth, h = im.naturalHeight, k = Math.min(1, max / Math.max(w, h));
+          var max = 1200, w = im.naturalWidth, h = im.naturalHeight, k = Math.min(1, max / Math.max(w, h));
           var cv = document.createElement("canvas"); cv.width = Math.round(w * k); cv.height = Math.round(h * k);
-          cv.getContext("2d").drawImage(im, 0, 0, cv.width, cv.height);
+          var ctx = cv.getContext("2d");
+          ctx.drawImage(im, 0, 0, cv.width, cv.height);
           URL.revokeObjectURL(url);
           cv.toBlob(function (b) {
             if (b && b.type === "image/webp" && b.size < f.size) return ok(b);
-            if (f.type === "image/png") return ok(f);               // sem WebP: não troca PNG (pode ter transparência)
-            cv.toBlob(function (j) { ok(j && j.size < f.size ? j : f); }, "image/jpeg", 0.85);
+            if (f.type === "image/png" && temTransparencia(ctx, cv.width, cv.height)) {
+              return cv.toBlob(function (p) { ok(p && p.size < f.size ? p : f); }, "image/png");   // transparente: continua PNG, reduzido
+            }
+            cv.toBlob(function (j) { ok(j && j.size < f.size ? j : f); }, "image/jpeg", 0.85);      // sem transparência: JPEG
           }, "image/webp", 0.85);
         } catch (e) { ok(f); }
       };
@@ -322,7 +333,7 @@
           var ext = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" })[f.type];
           msg(m, "ok", "Enviando a foto…");
           var path = "posts/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "." + ext;
-          var up = await sb.storage.from(C.BUCKET).upload(path, f, { contentType: f.type, upsert: false });
+          var up = await sb.storage.from(C.BUCKET).upload(path, f, { contentType: f.type, upsert: false, cacheControl: "31536000" });
           if (up.error) return msg(m, "err", erroTxt(up.error, "Não foi possível enviar a foto. A publicação NÃO foi salva.") );
           url = enviada = sb.storage.from(C.BUCKET).getPublicUrl(path).data.publicUrl;
         }
