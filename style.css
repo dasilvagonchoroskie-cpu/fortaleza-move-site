@@ -233,3 +233,8 @@ html{background:var(--bg)}
 .post .img.tem-foto .fundo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:blur(18px) brightness(.75);transform:scale(1.15)}
 .post .img.tem-foto .foto{position:relative;width:100%;height:100%;object-fit:contain}
 @media (max-width:640px){.post .img.tem-foto{aspect-ratio:auto}.post .img.tem-foto .fundo{display:none}.post .img.tem-foto .foto{height:auto;max-height:75vh}}
+a.soon{text-decoration:none}
+.app-card{text-align:center}
+.app-card .btn{margin-top:16px}
+.app-card [hidden]{display:none}
+.app-breve{display:inline-block;margin-top:16px;font-size:.85rem;color:var(--muted);border:1px dashed #9aa6c8;padding:6px 16px;border-radius:999px}
