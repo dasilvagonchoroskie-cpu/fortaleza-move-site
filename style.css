@@ -148,6 +148,14 @@ textarea{min-height:140px;resize:vertical}
 .chk input{width:auto}
 .preview{max-width:240px;border-radius:12px;margin-top:8px}
 #tab-apps .preview{display:block;width:auto;max-height:260px}
+/* segunda etapa do login (painel) */
+.codigo-2fa{font-size:1.5rem;letter-spacing:.3em;text-align:center;font-variant-numeric:tabular-nums}
+.chave-2fa{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.86rem}
+.passos-2fa{margin:10px 0 4px 20px;display:grid;gap:6px;font-size:.93rem}
+.qr-2fa{display:block;width:220px;max-width:100%;height:auto;margin-top:10px;background:#fff;padding:10px;border:1.5px solid var(--line);border-radius:12px}
+#area-2fa-ativar summary{cursor:pointer;font-weight:700;font-size:.9rem;margin-top:6px}
+.linha-botoes{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.link-discreto{color:var(--muted);font-size:.88rem;text-decoration:underline}
 @media(max-width:560px){.row2{grid-template-columns:1fr}.lista-item{flex-direction:column;align-items:flex-start}}
 
 
