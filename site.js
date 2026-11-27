@@ -30,6 +30,7 @@
   }
 
   function aplicarTextos() {
+    aplicarApps();
     var set = function (id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
     set("hero-titulo", cfg.hero_titulo);
     set("hero-sub", cfg.hero_subtitulo);
@@ -49,6 +50,28 @@
       ci.innerHTML = lista.map(function (c) { return "<span>" + esc(c) + "</span>"; }).join("");
       if (sec) sec.style.display = lista.length ? "" : "none";   // sem cidades cadastradas, a seção some
     }
+  }
+
+  // Área "Baixe os aplicativos": só vira botão o endereço oficial da Google Play.
+  function aplicarApps() {
+    var set = function (id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
+    set("apps-titulo", cfg.apps_titulo);
+    set("apps-texto", cfg.apps_texto);
+    var algum = false;
+    ["passageiro", "motorista", "comercio"].forEach(function (k) {
+      var link = String(cfg["app_" + k + "_link"] || "").trim();
+      var ok = /^https:\/\/play\.google\.com\//.test(link);
+      if (ok) algum = true;
+      set("app-" + k + "-texto", cfg["app_" + k + "_texto"]);
+      var a = document.querySelector('[data-app="' + k + '"]');
+      if (!a) return;
+      if (ok) a.href = link; else a.removeAttribute("href");
+      a.hidden = !ok;
+      a.parentNode.querySelector(".app-breve").hidden = ok;
+    });
+    document.querySelectorAll("[data-apps-aviso]").forEach(function (el) {
+      el.textContent = algum ? "📱 Baixe os aplicativos na Google Play" : "📱 Aplicativos em breve na Google Play";
+    });
   }
 
   async function carregarTextos() {
