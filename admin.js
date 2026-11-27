@@ -160,6 +160,8 @@
       b.classList.add("on");
       $("tab-posts").style.display = b.dataset.tab === "posts" ? "block" : "none";
       $("tab-textos").style.display = b.dataset.tab === "textos" ? "block" : "none";
+      $("tab-apps").style.display = b.dataset.tab === "apps" ? "block" : "none";
+      if (b.dataset.tab === "apps" && !appsOk) carregarApps();
       $("tab-conta").style.display = b.dataset.tab === "conta" ? "block" : "none";
       if (b.dataset.tab === "textos" && !textosOk) carregarTextos();
     });
@@ -420,6 +422,47 @@
         if (!r.data || r.data.length < linhas.length) return msg(m, "err", "Os textos não foram salvos (sem permissão). Saia e entre de novo.");
         msg(m, "ok", "Textos salvos. O site já mostra a mudança.");
       } catch (e) { msg(m, "err", erroTxt(e, "Não foi possível salvar os textos.")); }
+    });
+  });
+
+  // ---------- aplicativos ----------
+  var CHAVES_APPS = { apps_titulo: "a-titulo", apps_texto: "a-apresentacao" };
+  ["passageiro", "motorista", "comercio"].forEach(function (k) {
+    CHAVES_APPS["app_" + k + "_texto"] = "a-" + k + "-texto";
+    CHAVES_APPS["app_" + k + "_link"] = "a-" + k + "-link";
+  });
+  var appsOk = false;
+  async function carregarApps() {
+    var m = $("msg-apps"), btn = $("form-apps").querySelector("button[type=submit]");
+    var r;
+    try { r = await sb.from("site_settings").select("chave,valor"); } catch (e) { r = { error: e }; }
+    if (r.error) {
+      appsOk = false; btn.disabled = true;
+      return msg(m, "err", erroTxt(r.error, "Não foi possível carregar os dados atuais.") + " Abra esta aba de novo para tentar outra vez.");
+    }
+    appsOk = true; btn.disabled = false; msg(m, "", "");
+    var salvo = {};
+    (r.data || []).forEach(function (x) { salvo[x.chave] = x.valor; });
+    Object.keys(CHAVES_APPS).forEach(function (k) {
+      $(CHAVES_APPS[k]).value = salvo[k] != null ? salvo[k] : C.DEFAULTS[k] || "";
+    });
+  }
+  $("form-apps").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var m = $("msg-apps");
+    if (!appsOk) return msg(m, "err", "Os dados atuais não foram carregados. Abra a aba de novo antes de salvar.");
+    var linhas = Object.keys(CHAVES_APPS).map(function (k) {
+      return { chave: k, valor: $(CHAVES_APPS[k]).value.trim(), atualizado_em: new Date().toISOString() };
+    });
+    var ruim = linhas.some(function (l) { return /_link$/.test(l.chave) && l.valor && !/^https:\/\/play\.google\.com\//.test(l.valor); });
+    if (ruim) return msg(m, "err", "O link precisa começar com https://play.google.com/ (ou ficar vazio). Nada foi salvo.");
+    await ocupado(this, async function () {
+      try {
+        var r = await sb.from("site_settings").upsert(linhas, { onConflict: "chave" }).select("chave");
+        if (r.error) return msg(m, "err", erroTxt(r.error, "Não foi possível salvar."));
+        if (!r.data || r.data.length < linhas.length) return msg(m, "err", "Não foi salvo (sem permissão). Saia e entre de novo.");
+        msg(m, "ok", "Salvo. O site já mostra a mudança.");
+      } catch (e) { msg(m, "err", erroTxt(e, "Não foi possível salvar.")); }
     });
   });
 
