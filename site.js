@@ -52,22 +52,30 @@
     }
   }
 
-  // Área "Baixe os aplicativos": só vira botão o endereço oficial da Google Play.
+  // Área "Baixe os aplicativos": só vira botão o link do aplicativo oficial na Google Play,
+  // e só aparece foto que esteja no depósito do próprio site.
   function aplicarApps() {
     var set = function (id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
     set("apps-titulo", cfg.apps_titulo);
     set("apps-texto", cfg.apps_texto);
     var algum = false;
-    ["passageiro", "motorista", "comercio"].forEach(function (k) {
-      var link = String(cfg["app_" + k + "_link"] || "").trim();
-      var ok = /^https:\/\/play\.google\.com\//.test(link);
-      if (ok) algum = true;
+    Object.keys(C.APPS).forEach(function (k) {
+      var link = C.linkOficial(k, cfg["app_" + k + "_link"]);
+      if (link) algum = true;
       set("app-" + k + "-texto", cfg["app_" + k + "_texto"]);
       var a = document.querySelector('[data-app="' + k + '"]');
       if (!a) return;
-      if (ok) a.href = link; else a.removeAttribute("href");
-      a.hidden = !ok;
-      a.parentNode.querySelector(".app-breve").hidden = ok;
+      var cartao = a.parentNode;
+      if (link) a.href = link; else a.removeAttribute("href");
+      a.hidden = !link;
+      cartao.querySelector(".app-breve").hidden = !!link;
+      var quadro = cartao.querySelector("[data-app-foto]"), img = quadro.querySelector("img");
+      var foto = C.fotoOficial(cfg["app_" + k + "_foto"]);
+      var mostrar = function (sim) { quadro.hidden = !sim; cartao.classList.toggle("tem-foto", sim); };
+      if (!foto) { img.removeAttribute("src"); mostrar(false); return; }
+      img.onerror = function () { mostrar(false); };       // foto que não carrega: volta o ícone
+      if (img.getAttribute("src") !== foto) img.src = foto;
+      mostrar(true);
     });
     document.querySelectorAll("[data-apps-aviso]").forEach(function (el) {
       el.textContent = algum ? "📱 Baixe os aplicativos na Google Play" : "📱 Aplicativos em breve na Google Play";
@@ -150,12 +158,14 @@
     if (!p || !modal) return;
     var img = safeImg(p.imagem_url);
     modal.querySelector(".box").innerHTML =
-      (img ? '<div class="img"><img alt="" src="' + esc(img) + '" onerror="this.parentNode.remove()"></div>' : "") +   // na janela, a foto aparece inteira
+      (img ? '<div class="img"><img alt="" src="' + esc(img) + '"></div>' : "") +   // na janela, a foto aparece inteira
       '<div class="in"><button class="x" type="button" aria-label="Fechar">×</button>' +
       '<span class="tag">' + esc(p.categoria) + "</span><h3>" + esc(p.titulo) + "</h3>" +
       '<p class="data">' + esc(dataBR(p.criado_em)) + "</p>" +
       paragrafos(p.corpo || p.resumo) + "</div>";
     modal.classList.add("on");
+    var foto = modal.querySelector(".box .img img");
+    if (foto) foto.addEventListener("error", function () { this.parentNode.remove(); });
     var x = modal.querySelector(".x");
     x.addEventListener("click", fechar);
     x.focus();
