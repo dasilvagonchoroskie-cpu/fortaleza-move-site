@@ -9,6 +9,14 @@ window.MOV_CONFIG = {
     hero_subtitulo: "Transporte de passageiros por aplicativo, mototáxi e entrega de encomendas por moto ou carro. Rápido, seguro e feito para quem mora aqui.",
     whatsapp: "5564996472794",
     aviso_topo: "",
-    cidades: ""
+    cidades: "",
+    apps_titulo: "Baixe os aplicativos",
+    apps_texto: "Os links oficiais da Google Play ficam aqui.",
+    app_passageiro_texto: "Peça corridas e envie encomendas.",
+    app_passageiro_link: "",
+    app_motorista_texto: "Receba corridas e entregas.",
+    app_motorista_link: "",
+    app_comercio_texto: "Envie os pedidos da sua loja.",
+    app_comercio_link: ""
   }
 };
