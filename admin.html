@@ -56,6 +56,7 @@
   <div class="tabs">
     <button data-tab="posts" class="on">Publicações</button>
     <button data-tab="textos">Textos do site</button>
+    <button data-tab="apps">Aplicativos</button>
     <button data-tab="conta">Conta</button>
   </div>
 
@@ -123,6 +124,35 @@
         <input id="t-cidades" type="hidden">
         <div id="msg-textos"></div>
         <button class="btn btn-gold" style="margin-top:18px" type="submit">Salvar textos</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="tab-apps" style="display:none">
+    <div class="box-adm">
+      <h2 style="font-size:1.15rem">Aplicativos</h2>
+      <form id="form-apps" novalidate>
+        <label for="a-titulo">Título da área</label>
+        <input id="a-titulo" maxlength="80">
+        <label for="a-apresentacao">Texto da área</label>
+        <textarea id="a-apresentacao" maxlength="300" style="min-height:90px"></textarea>
+        <h3 style="margin-top:22px;font-size:1rem">Passageiro</h3>
+        <label for="a-passageiro-texto">Texto</label>
+        <input id="a-passageiro-texto" maxlength="160">
+        <label for="a-passageiro-link">Link da Google Play (vazio = "Em breve")</label>
+        <input id="a-passageiro-link" type="url" inputmode="url" maxlength="300" placeholder="https://play.google.com/...">
+        <h3 style="margin-top:22px;font-size:1rem">Motorista</h3>
+        <label for="a-motorista-texto">Texto</label>
+        <input id="a-motorista-texto" maxlength="160">
+        <label for="a-motorista-link">Link da Google Play (vazio = "Em breve")</label>
+        <input id="a-motorista-link" type="url" inputmode="url" maxlength="300" placeholder="https://play.google.com/...">
+        <h3 style="margin-top:22px;font-size:1rem">Comércio</h3>
+        <label for="a-comercio-texto">Texto</label>
+        <input id="a-comercio-texto" maxlength="160">
+        <label for="a-comercio-link">Link da Google Play (vazio = "Em breve")</label>
+        <input id="a-comercio-link" type="url" inputmode="url" maxlength="300" placeholder="https://play.google.com/...">
+        <div id="msg-apps"></div>
+        <button class="btn btn-gold" style="margin-top:18px" type="submit" disabled>Salvar aplicativos</button>
       </form>
     </div>
   </div>
