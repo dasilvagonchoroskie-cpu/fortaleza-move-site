@@ -2,6 +2,8 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://dluphbekvokxdanrkmqx.supabase.co; connect-src 'self' https://dluphbekvokxdanrkmqx.supabase.co; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fortaleza Move — Corridas, mototáxi e encomendas</title>
 <meta name="description" content="Fortaleza Move: transporte de passageiros por aplicativo (carro e moto) e entrega de encomendas por moto ou carro. Peça sua corrida ou seja motorista parceiro.">
@@ -43,7 +45,7 @@
         <a class="btn btn-gold" data-wa="Olá! Quero saber mais sobre a Fortaleza Move." href="https://wa.me/5564996472794">Falar no WhatsApp</a>
         <a class="btn btn-line" href="motorista.html">Quero ser motorista</a>
       </div>
-      <span class="soon">📱 Aplicativos em breve na Google Play</span>
+      <a class="soon" href="#aplicativos" data-apps-aviso>📱 Aplicativos em breve na Google Play</a>
     </div>
     <aside class="hero-card">
       <h3>Por que a Fortaleza Move</h3>
@@ -68,6 +70,28 @@
       <a class="card area" href="passageiro.html"><div class="ic">🚗</div><h3>Passageiro</h3><p>Corridas de carro, mototáxi e encomendas, pelo aplicativo.</p><span class="mais">Ver mais →</span></a>
       <a class="card area" href="motorista.html"><div class="ic ic-duplo" aria-hidden="true"><span>🚗</span><span>🏍️</span></div><h3>Motorista</h3><p>Dirija de carro ou de moto e ganhe com cada corrida ou entrega.</p><span class="mais">Ver mais →</span></a>
       <a class="card area" href="comercio.html"><div class="ic">🛍️</div><h3>Comércio</h3><p>Leve seus produtos até o cliente com entregadores locais.</p><span class="mais">Ver mais →</span></a>
+    </div>
+  </div>
+</section>
+
+<section id="aplicativos" class="apps-area">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Aplicativos</span>
+      <h2 id="apps-titulo">Baixe os aplicativos</h2>
+      <p id="apps-texto">Baixe somente pelos botões oficiais desta página, direto da Google Play.</p>
+    </div>
+    <div class="apps-grid">
+      <div class="card app-card">
+        <div class="app-foto" data-app-foto="passageiro" hidden><img alt="Imagem do aplicativo do passageiro" loading="lazy" decoding="async"></div>
+        <div class="ic" aria-hidden="true">🚗</div><h3>App do Passageiro</h3><p id="app-passageiro-texto">Peça corridas e envie encomendas.</p>
+        <a class="btn btn-gold btn-sm" data-app="passageiro" target="_blank" rel="noopener noreferrer" hidden>Baixar na Google Play</a><span class="app-breve">Em breve na Google Play</span>
+      </div>
+      <div class="card app-card">
+        <div class="app-foto" data-app-foto="motorista" hidden><img alt="Imagem do aplicativo do motorista" loading="lazy" decoding="async"></div>
+        <div class="ic" aria-hidden="true">🏍️</div><h3>App do Motorista</h3><p id="app-motorista-texto">Receba corridas e entregas.</p>
+        <a class="btn btn-gold btn-sm" data-app="motorista" target="_blank" rel="noopener noreferrer" hidden>Baixar na Google Play</a><span class="app-breve">Em breve na Google Play</span>
+      </div>
     </div>
   </div>
 </section>
