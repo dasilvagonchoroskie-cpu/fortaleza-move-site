@@ -39,6 +39,19 @@
   <p style="margin-top:14px"><a href="#" id="esqueci" style="color:var(--muted);font-size:.88rem;text-decoration:underline">Esqueci a senha</a></p>
 </div>
 
+<!-- segunda etapa: código do aplicativo autenticador -->
+<div id="tela-codigo" class="login" style="display:none">
+  <h1>Verificação em duas etapas</h1>
+  <p>Abra o seu aplicativo autenticador e digite o código de 6 números da Fortaleza Move.</p>
+  <form id="form-codigo" novalidate>
+    <label for="codigo">Código de 6 números</label>
+    <input id="codigo" class="codigo-2fa" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="9">
+    <div id="msg-codigo"></div>
+    <button class="btn btn-gold" style="width:100%;margin-top:18px" type="submit">Confirmar</button>
+  </form>
+  <p style="margin-top:14px"><a href="#" id="codigo-voltar" class="link-discreto">Voltar para o login</a></p>
+</div>
+
 <!-- definir nova senha (recuperação ou convite) -->
 <div id="tela-senha" class="login" style="display:none">
   <h1>Definir nova senha</h1>
@@ -164,6 +177,48 @@
   </div>
 
   <div id="tab-conta" style="display:none">
+    <div class="box-adm">
+      <h2 style="font-size:1.15rem">Verificação em duas etapas</h2>
+      <p class="dica" id="situacao-2fa" role="status">Conferindo…</p>
+      <div id="msg-2fa"></div>
+      <button type="button" class="btn btn-gold" id="btn-2fa-ativar" hidden>Ativar a segunda etapa</button>
+      <button type="button" class="btn btn-ghost" id="btn-2fa-desativar" hidden>Desativar a segunda etapa</button>
+      <button type="button" class="btn btn-sm btn-navy" id="btn-2fa-recarregar" hidden>Tentar de novo</button>
+
+      <div id="area-2fa-ativar" hidden>
+        <ol class="passos-2fa">
+          <li>Toque em <b>Copiar chave</b>.</li>
+          <li>Abra o seu aplicativo autenticador, toque em <b>+</b>, escolha digitar a chave, dê o nome <b>Fortaleza Move</b> e cole.</li>
+          <li>Volte aqui, digite o código de 6 números que ele mostrar e toque em <b>Confirmar e ativar</b>.</li>
+        </ol>
+        <label for="chave-2fa">Chave de configuração (não envie para ninguém)</label>
+        <input id="chave-2fa" class="chave-2fa" type="text" readonly autocomplete="off" spellcheck="false">
+        <button type="button" class="btn btn-sm btn-navy" id="btn-2fa-copiar" style="margin-top:8px">Copiar chave</button>
+        <span class="dica" id="dica-2fa-copiar" role="status" style="margin-left:8px"></span>
+        <p class="dica" style="margin-top:12px"><b>Anote a chave em papel</b> e guarde em lugar seguro. Com ela você configura o autenticador em outro celular se perder este.</p>
+        <details id="detalhes-qr"><summary>Usar QR Code (para ler com outro aparelho)</summary><img id="qr-2fa" class="qr-2fa" alt="QR Code para o aplicativo autenticador"></details>
+        <form id="form-2fa-ativar" novalidate>
+          <label for="codigo-ativar">Código de 6 números</label>
+          <input id="codigo-ativar" class="codigo-2fa" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="9">
+          <div id="msg-2fa-ativar"></div>
+          <div class="linha-botoes">
+            <button class="btn btn-gold" type="submit">Confirmar e ativar</button>
+            <button class="btn btn-ghost" type="button" id="btn-2fa-cancelar">Cancelar</button>
+          </div>
+        </form>
+      </div>
+
+      <form id="form-2fa-desativar" novalidate hidden>
+        <label for="codigo-desativar">Para desativar, digite o código atual do autenticador</label>
+        <input id="codigo-desativar" class="codigo-2fa" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="9">
+        <div id="msg-2fa-desativar"></div>
+        <div class="linha-botoes">
+          <button class="btn btn-danger" type="submit">Confirmar e desativar</button>
+          <button class="btn btn-ghost" type="button" id="btn-2fa-manter">Manter ativada</button>
+        </div>
+      </form>
+    </div>
+
     <div class="box-adm">
       <h2 style="font-size:1.15rem">Trocar minha senha</h2>
       <form id="form-conta">
