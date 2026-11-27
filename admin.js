@@ -1,4 +1,15 @@
+// Painel instalável como aplicativo (ficava dentro do HTML; a política de segurança não permite código embutido).
 (function () {
+  try { if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js"); } catch (e) {}
+  var ev = null, b = document.getElementById("btn-instalar");
+  window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); ev = e; b.hidden = false; });
+  b.addEventListener("click", function () { if (!ev) return; ev.prompt(); ev.userChoice.then(function () { ev = null; b.hidden = true; }); });
+  window.addEventListener("appinstalled", function () { b.hidden = true; });
+})();
+
+(function () {
+  // O painel não funciona dentro da moldura de outro site (golpe de "clique roubado").
+  if (window.top !== window.self) { document.body.textContent = "Por segurança, o painel não abre dentro de outra página."; return; }
   var C = window.MOV_CONFIG;
   // Endereço como chegou (antes de a biblioteca do Supabase ler e limpar o link do e-mail).
   var LINK = new URLSearchParams((location.hash || "").replace(/^#/, "") + "&" + (location.search || "").replace(/^\?/, ""));
@@ -41,8 +52,45 @@
     } catch (e) { return null; }
   }
 
+  // Sessão: o painel sai sozinho depois de 30 minutos sem uso (inclusive se o aparelho ficar guardado).
+  var LIMITE_PARADO = 30 * 60 * 1000, CHAVE_ATIVIDADE = "fm-painel-atividade";
+  var MSG_PARADO = "Por segurança, o painel saiu depois de 30 minutos sem uso. Entre de novo.";
+  var ultimaAtividade = 0, ultimaGravacao = 0, painelAberto = false;
+  function marcarAtividade() {
+    ultimaAtividade = ultimaGravacao = Date.now();
+    try { localStorage.setItem(CHAVE_ATIVIDADE, String(ultimaAtividade)); } catch (e) {}
+  }
+  function paradoDemais() {
+    var t = ultimaAtividade;
+    try { t = Math.max(t, Number(localStorage.getItem(CHAVE_ATIVIDADE)) || 0); } catch (e) {}   // vale a aba usada por último
+    return Date.now() - t > LIMITE_PARADO;
+  }
+  // Encerra só a sessão deste aparelho e limpa a tela (recarregar apaga tudo que estava carregado).
+  async function sairPorInatividade() {
+    if (!painelAberto) return;
+    painelAberto = false; telas("login");
+    try { await sb.auth.signOut({ scope: "local" }); } catch (e) {}
+    try { sessionStorage.setItem("fm-painel-parado", "1"); } catch (e) {}
+    location.reload();
+  }
+  function conferirSessao() {
+    if (!painelAberto) return false;
+    if (paradoDemais()) { sairPorInatividade(); return true; }
+    return false;
+  }
+  ["pointerdown", "keydown", "input", "change", "submit"].forEach(function (ev) {
+    document.addEventListener(ev, function (e) {
+      if (!painelAberto) return;
+      if (conferirSessao()) { e.preventDefault(); e.stopImmediatePropagation(); return; }
+      if (Date.now() - ultimaGravacao > 5000) marcarAtividade();
+    }, true);
+  });
+  setInterval(conferirSessao, 20000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) conferirSessao(); });
+
   // Link de recuperação de senha ou de convite: o Supabase devolve o usuário aqui com type=recovery|invite no endereço.
-  var modoSenha = /^(recovery|invite)$/.test(LINK.get("type") || "");
+  // Só digitar "#type=recovery" no endereço não abre a tela: precisa do código que vem no link do e-mail.
+  var modoSenha = /^(recovery|invite)$/.test(LINK.get("type") || "") && !!LINK.get("access_token");
   // Link inválido: o Supabase devolve error_code (ex.: otp_expired = expirado, já usado ou substituído por um e-mail mais novo).
   var erroLink = LINK.get("error_code") || LINK.get("error");
   if (erroLink) {
@@ -64,12 +112,23 @@
       var s = await sb.auth.getSession();
       var user = s.data && s.data.session && s.data.session.user;
       if (modoSenha && user) return mostrarSenha();
-      if (!user) return mostrarLogin();
+      if (!user) { mostrarLogin(); avisarSaidaPorInatividade(); return; }
+      if (paradoDemais()) {
+        await sb.auth.signOut({ scope: "local" });
+        mostrarLogin(); return msg($("msg-login"), "ok", MSG_PARADO);
+      }
       var adm = await ehAdmin(user);
       if (adm === true) mostrarPainel();
       else if (adm === null) { mostrarLogin(); msg($("msg-login"), "err", "Não foi possível confirmar seu acesso agora (sem conexão?). Tente de novo em instantes."); }
       else { await sb.auth.signOut(); mostrarLogin(); }
     } catch (e) { mostrarLogin(); msg($("msg-login"), "err", erroTxt(e, "Não foi possível iniciar o painel. Recarregue a página.")); }
+  }
+  function avisarSaidaPorInatividade() {
+    try {
+      if (!sessionStorage.getItem("fm-painel-parado")) return;
+      sessionStorage.removeItem("fm-painel-parado");
+      msg($("msg-login"), "ok", MSG_PARADO);
+    } catch (e) {}
   }
   function telas(qual) {
     $("tela-login").style.display = qual === "login" ? "block" : "none";
@@ -80,8 +139,9 @@
   function mostrarLogin() { telas("login"); }
   function mostrarSenha() { telas("senha"); }
   function mostrarPainel() {
+    marcarAtividade(); painelAberto = true;
     telas("painel");
-    carregarPosts(); carregarTextos();
+    carregarPosts(); carregarTextos(); carregarApps();
   }
 
   $("form-senha").addEventListener("submit", async function (e) {
@@ -150,6 +210,7 @@
   });
 
   $("btn-sair").addEventListener("click", async function () {
+    painelAberto = false;
     try { await sb.auth.signOut(); } catch (e) { /* mesmo sem rede, a sessão local é encerrada */ }
     mostrarLogin();
   });
@@ -161,7 +222,7 @@
       $("tab-posts").style.display = b.dataset.tab === "posts" ? "block" : "none";
       $("tab-textos").style.display = b.dataset.tab === "textos" ? "block" : "none";
       $("tab-apps").style.display = b.dataset.tab === "apps" ? "block" : "none";
-      if (b.dataset.tab === "apps" && !appsOk) carregarApps();
+      if (b.dataset.tab === "apps" && !appsOk) carregarApps();           // só recarrega se a primeira carga falhou
       $("tab-conta").style.display = b.dataset.tab === "conta" ? "block" : "none";
       if (b.dataset.tab === "textos" && !textosOk) carregarTextos();
     });
@@ -170,24 +231,31 @@
   $("form-conta").addEventListener("submit", async function (e) {
     e.preventDefault();
     var m = $("msg-conta");
-    var a = $("c-nova1").value, b = $("c-nova2").value;
+    var atual = $("c-atual").value, a = $("c-nova1").value, b = $("c-nova2").value;
+    if (!atual) return msg(m, "err", "Digite a senha atual.");
     if (a.length < 10) return msg(m, "err", "Use pelo menos 10 caracteres.");
     if (a !== b) return msg(m, "err", "As duas senhas não são iguais.");
     await ocupado(this, async function () {
       try {
+        var s = await sb.auth.getSession();
+        var email = s.data && s.data.session && s.data.session.user && s.data.session.user.email;
+        if (!email) return msg(m, "err", "Sua sessão expirou. Toque em Sair, entre de novo e repita a ação.");
+        var conf = await sb.auth.signInWithPassword({ email: email, password: atual });
+        if (conf.error) return msg(m, "err", erroTxt(conf.error, "A senha atual não confere. A senha NÃO foi trocada."));
         var r = await sb.auth.updateUser({ password: a });
         if (r.error) return msg(m, "err", erroTxt(r.error, "Não foi possível trocar a senha. Saia, entre de novo e tente outra vez."));
-        $("c-nova1").value = ""; $("c-nova2").value = "";
-        msg(m, "ok", "Senha trocada com sucesso.");
+        $("c-atual").value = ""; $("c-nova1").value = ""; $("c-nova2").value = "";
+        var outros = await sb.auth.signOut({ scope: "others" });
+        msg(m, "ok", outros && outros.error ? "Senha trocada. Não consegui desconectar os outros aparelhos agora." : "Senha trocada. Os outros aparelhos que estavam no painel foram desconectados.");
       } catch (e) { msg(m, "err", erroTxt(e, "Não foi possível trocar a senha.")); }
     });
   });
 
-  // ---------- fotos: reduz o peso antes de enviar ----------
-  // Fotos grandes (ex.: 2 MB, 4000 px) deixam o site lento no celular. Reduz para no máximo 1200 px no lado maior,
-  // mantendo a proporção (nada é cortado). Usa WebP quando o aparelho suporta.
-  // Sem WebP (ex.: iPhone/Safari): PNG sem transparência vira JPEG (antes o PNG pesado seguia sem reduzir);
-  // PNG com transparência continua PNG, só que reduzido. Se não ficar menor, envia o arquivo original.
+  // ---------- fotos: limpa e reduz antes de enviar ----------
+  // Toda foto é redesenhada antes do envio, mesmo a pequena: assim saem os dados escondidos no arquivo
+  // (local do GPS, modelo do celular, data). Reduz para no máximo 1200 px no lado maior, sem cortar.
+  // Usa WebP quando o aparelho suporta; sem WebP (ex.: iPhone), usa JPEG, ou PNG quando há transparência.
+  // Se o aparelho não conseguir abrir a imagem, nada é enviado.
   function temTransparencia(ctx, w, h) {
     try {
       var d = ctx.getImageData(0, 0, w, h).data;
@@ -197,27 +265,39 @@
   }
   function otimizarFoto(f) {
     return new Promise(function (ok) {
-      if (f.size < 350 * 1024) return ok(f);
       var url = URL.createObjectURL(f), im = new Image();
-      im.onerror = function () { URL.revokeObjectURL(url); ok(f); };
+      im.onerror = function () { URL.revokeObjectURL(url); ok(null); };
       im.onload = function () {
         try {
           var max = 1200, w = im.naturalWidth, h = im.naturalHeight, k = Math.min(1, max / Math.max(w, h));
-          var cv = document.createElement("canvas"); cv.width = Math.round(w * k); cv.height = Math.round(h * k);
+          var cv = document.createElement("canvas"); cv.width = Math.max(1, Math.round(w * k)); cv.height = Math.max(1, Math.round(h * k));
           var ctx = cv.getContext("2d");
           ctx.drawImage(im, 0, 0, cv.width, cv.height);
           URL.revokeObjectURL(url);
           cv.toBlob(function (b) {
-            if (b && b.type === "image/webp" && b.size < f.size) return ok(b);
-            if (f.type === "image/png" && temTransparencia(ctx, cv.width, cv.height)) {
-              return cv.toBlob(function (p) { ok(p && p.size < f.size ? p : f); }, "image/png");   // transparente: continua PNG, reduzido
-            }
-            cv.toBlob(function (j) { ok(j && j.size < f.size ? j : f); }, "image/jpeg", 0.85);      // sem transparência: JPEG
+            if (b && b.type === "image/webp") return ok(b);
+            if (f.type !== "image/jpeg" && temTransparencia(ctx, cv.width, cv.height)) return cv.toBlob(ok, "image/png");
+            cv.toBlob(ok, "image/jpeg", 0.85);
           }, "image/webp", 0.85);
-        } catch (e) { ok(f); }
+        } catch (e) { ok(null); }
       };
       im.src = url;
     });
+  }
+  // Valida, limpa e envia uma foto para a pasta indicada. Devolve { url } ou { erro }.
+  async function enviarFoto(arquivo, pasta, avisar) {
+    if (!/^image\/(jpeg|png|webp)$/.test(arquivo.type)) return { erro: "Use imagem JPG, PNG ou WebP." };
+    if (arquivo.size > 25 * 1024 * 1024) return { erro: "A imagem é grande demais." };
+    avisar("Preparando a foto…");
+    var f = await otimizarFoto(arquivo);
+    if (!f) return { erro: "Não consegui abrir essa imagem." };
+    if (f.size > 5 * 1024 * 1024) return { erro: "A imagem passa de 5 MB." };
+    var ext = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" })[f.type];
+    avisar("Enviando a foto…");
+    var path = pasta + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "." + ext;
+    var up = await sb.storage.from(C.BUCKET).upload(path, f, { contentType: f.type, upsert: false, cacheControl: "31536000" });
+    if (up.error) return { erro: erroTxt(up.error, "Não foi possível enviar a foto.") };
+    return { url: sb.storage.from(C.BUCKET).getPublicUrl(path).data.publicUrl };
   }
 
   // ---------- fotos: lixeira recuperável ----------
@@ -228,11 +308,14 @@
     try {
       if (!url || url.indexOf(PREFIXO_FOTO) !== 0) return true;
       var caminho = decodeURIComponent(url.slice(PREFIXO_FOTO.length).split("?")[0]);
-      if (!/^posts\/[^/]+$/.test(caminho)) return true;
+      if (!/^(posts|apps)\/[^/]+$/.test(caminho)) return true;
       var r = await sb.from("site_posts").select("id").eq("imagem_url", url);
       if (r.error) return false;                                   // sem confirmar as referências, não mexe
       if ((r.data || []).some(function (x) { return x.id !== ignorarId; })) return true;   // ainda em uso
-      var m = await sb.storage.from(C.BUCKET).move(caminho, "lixeira/" + new Date().toISOString().slice(0, 10) + "/" + caminho.slice(6));
+      var t = await sb.from("site_settings").select("chave").eq("valor", url);
+      if (t.error) return false;
+      if ((t.data || []).length) return true;                      // em uso num cartão de aplicativo
+      var m = await sb.storage.from(C.BUCKET).move(caminho, "lixeira/" + new Date().toISOString().slice(0, 10) + "/" + caminho.split("/")[1]);
       return !m.error;
     } catch (e) { return false; }
   }
@@ -328,16 +411,9 @@
         var anterior = editandoId ? ((posts.find(function (x) { return x.id === editandoId; }) || {}).imagem_url || null) : null;
         var f = $("p-img").files[0];
         if (f) {
-          if (!/^image\/(jpeg|png|webp)$/.test(f.type)) return msg(m, "err", "Use imagem JPG, PNG ou WebP. Nada foi salvo.");
-          msg(m, "ok", "Preparando a foto…");
-          f = await otimizarFoto(f);                               // mesma proporção, sem cortes; só reduz o peso
-          if (f.size > 5 * 1024 * 1024) return msg(m, "err", "A imagem passa de 5 MB. Nada foi salvo.");
-          var ext = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" })[f.type];
-          msg(m, "ok", "Enviando a foto…");
-          var path = "posts/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "." + ext;
-          var up = await sb.storage.from(C.BUCKET).upload(path, f, { contentType: f.type, upsert: false, cacheControl: "31536000" });
-          if (up.error) return msg(m, "err", erroTxt(up.error, "Não foi possível enviar a foto. A publicação NÃO foi salva.") );
-          url = enviada = sb.storage.from(C.BUCKET).getPublicUrl(path).data.publicUrl;
+          var envio = await enviarFoto(f, "posts", function (t) { msg(m, "ok", t); });
+          if (envio.erro) return msg(m, "err", envio.erro + " A publicação NÃO foi salva.");
+          url = enviada = envio.url;
         }
         var dados = {
           titulo: titulo,
@@ -426,43 +502,106 @@
   });
 
   // ---------- aplicativos ----------
-  var CHAVES_APPS = { apps_titulo: "a-titulo", apps_texto: "a-apresentacao" };
-  ["passageiro", "motorista", "comercio"].forEach(function (k) {
-    CHAVES_APPS["app_" + k + "_texto"] = "a-" + k + "-texto";
-    CHAVES_APPS["app_" + k + "_link"] = "a-" + k + "-link";
+  var APPS = Object.keys(C.APPS);                                   // passageiro, motorista
+  var NOMES = { passageiro: "Passageiro", motorista: "Motorista" };
+  var CAMPOS = { apps_titulo: "a-titulo", apps_texto: "a-apresentacao" };
+  APPS.forEach(function (k) {
+    CAMPOS["app_" + k + "_texto"] = "a-" + k + "-texto";
+    CAMPOS["app_" + k + "_link"] = "a-" + k + "-link";
   });
-  var appsOk = false;
+  var appsOk = false, carregandoApps = false;
+  var fotoSalva = {}, fotoAtual = {};                               // endereço no banco / o que ficará ao salvar
+  var previas = {};
+
+  function pintarFotoApp(k, endereco) {
+    var pv = $("a-" + k + "-preview");
+    if (endereco) { pv.src = endereco; pv.hidden = false; } else { pv.removeAttribute("src"); pv.hidden = true; }
+    $("a-" + k + "-remover").hidden = !endereco;
+  }
+  function soltarPrevia(k) { if (previas[k]) { URL.revokeObjectURL(previas[k]); previas[k] = null; } }
+
+  APPS.forEach(function (k) {
+    $("a-" + k + "-foto").addEventListener("change", function () {
+      var f = this.files[0];
+      soltarPrevia(k); $("a-" + k + "-dica").textContent = "";
+      if (!f) return pintarFotoApp(k, fotoAtual[k]);
+      if (!/^image\/(jpeg|png|webp)$/.test(f.type)) { this.value = ""; $("a-" + k + "-dica").textContent = "Use imagem JPG, PNG ou WebP."; return pintarFotoApp(k, fotoAtual[k]); }
+      previas[k] = URL.createObjectURL(f);
+      pintarFotoApp(k, previas[k]);
+      $("a-" + k + "-dica").textContent = "A foto nova vai para o site quando você tocar em “Salvar aplicativos”.";
+    });
+    $("a-" + k + "-remover").addEventListener("click", function () {
+      soltarPrevia(k); fotoAtual[k] = ""; $("a-" + k + "-foto").value = "";
+      pintarFotoApp(k, "");
+      $("a-" + k + "-dica").textContent = "A foto sai do site quando você tocar em “Salvar aplicativos”.";
+    });
+  });
+
   async function carregarApps() {
+    if (carregandoApps) return;
+    carregandoApps = true;
     var m = $("msg-apps"), btn = $("form-apps").querySelector("button[type=submit]");
+    appsOk = false; btn.disabled = true;
     var r;
     try { r = await sb.from("site_settings").select("chave,valor"); } catch (e) { r = { error: e }; }
-    if (r.error) {
-      appsOk = false; btn.disabled = true;
-      return msg(m, "err", erroTxt(r.error, "Não foi possível carregar os dados atuais.") + " Abra esta aba de novo para tentar outra vez.");
-    }
-    appsOk = true; btn.disabled = false; msg(m, "", "");
+    carregandoApps = false;
+    if (r.error) return msg(m, "err", erroTxt(r.error, "Não foi possível carregar os dados atuais.") + " O botão Salvar fica bloqueado. Abra esta aba de novo para tentar outra vez.");
     var salvo = {};
     (r.data || []).forEach(function (x) { salvo[x.chave] = x.valor; });
-    Object.keys(CHAVES_APPS).forEach(function (k) {
-      $(CHAVES_APPS[k]).value = salvo[k] != null ? salvo[k] : C.DEFAULTS[k] || "";
+    Object.keys(CAMPOS).forEach(function (k) { $(CAMPOS[k]).value = salvo[k] != null ? salvo[k] : C.DEFAULTS[k] || ""; });
+    APPS.forEach(function (k) {
+      fotoSalva[k] = fotoAtual[k] = C.fotoOficial(salvo["app_" + k + "_foto"]);
+      soltarPrevia(k); $("a-" + k + "-foto").value = ""; $("a-" + k + "-dica").textContent = "";
+      pintarFotoApp(k, fotoAtual[k]);
     });
+    appsOk = true; btn.disabled = false; msg(m, "", "");
   }
+
   $("form-apps").addEventListener("submit", async function (e) {
     e.preventDefault();
     var m = $("msg-apps");
     if (!appsOk) return msg(m, "err", "Os dados atuais não foram carregados. Abra a aba de novo antes de salvar.");
-    var linhas = Object.keys(CHAVES_APPS).map(function (k) {
-      return { chave: k, valor: $(CHAVES_APPS[k]).value.trim(), atualizado_em: new Date().toISOString() };
-    });
-    var ruim = linhas.some(function (l) { return /_link$/.test(l.chave) && l.valor && !/^https:\/\/play\.google\.com\//.test(l.valor); });
-    if (ruim) return msg(m, "err", "O link precisa começar com https://play.google.com/ (ou ficar vazio). Nada foi salvo.");
+    // 1) confere os links antes de enviar qualquer coisa
+    var links = {};
+    for (var i = 0; i < APPS.length; i++) {
+      var k = APPS[i], digitado = $("a-" + k + "-link").value.trim();
+      links[k] = digitado ? C.linkOficial(k, digitado) : "";
+      if (digitado && !links[k]) return msg(m, "err", "O link do App do " + NOMES[k] + " não é o do aplicativo oficial. Na Google Play, abra o app, toque em Compartilhar e cole o link aqui. Ele precisa conter: id=" + C.APPS[k] + ". Nada foi salvo.");
+    }
     await ocupado(this, async function () {
+      var enviadas = [];
+      async function descartarEnviadas() { for (var j = 0; j < enviadas.length; j++) await moverParaLixeira(enviadas[j], null); }
       try {
+        // 2) envia as fotos novas
+        var fotos = {};
+        for (var i = 0; i < APPS.length; i++) {
+          var k = APPS[i], arquivo = $("a-" + k + "-foto").files[0];
+          fotos[k] = fotoAtual[k] || "";
+          if (!arquivo) continue;
+          var envio = await enviarFoto(arquivo, "apps", function (t) { msg(m, "ok", t); });
+          if (envio.erro) { await descartarEnviadas(); return msg(m, "err", "App do " + NOMES[k] + ": " + envio.erro + " Nada foi salvo."); }
+          fotos[k] = envio.url; enviadas.push(envio.url);
+        }
+        // 3) grava tudo de uma vez
+        APPS.forEach(function (k) { $("a-" + k + "-link").value = links[k]; });
+        var agora = new Date().toISOString();
+        var linhas = Object.keys(CAMPOS).map(function (c) { return { chave: c, valor: $(CAMPOS[c]).value.trim(), atualizado_em: agora }; })
+          .concat(APPS.map(function (k) { return { chave: "app_" + k + "_foto", valor: fotos[k], atualizado_em: agora }; }));
+        msg(m, "ok", "Salvando…");
         var r = await sb.from("site_settings").upsert(linhas, { onConflict: "chave" }).select("chave");
-        if (r.error) return msg(m, "err", erroTxt(r.error, "Não foi possível salvar."));
-        if (!r.data || r.data.length < linhas.length) return msg(m, "err", "Não foi salvo (sem permissão). Saia e entre de novo.");
-        msg(m, "ok", "Salvo. O site já mostra a mudança.");
-      } catch (e) { msg(m, "err", erroTxt(e, "Não foi possível salvar.")); }
+        if (r.error) { await descartarEnviadas(); return msg(m, "err", erroTxt(r.error, "Não foi possível salvar. Nada mudou no site.")); }
+        if (!r.data || r.data.length < linhas.length) { await descartarEnviadas(); return msg(m, "err", "Não foi salvo (sem permissão). Saia e entre de novo."); }
+        // 4) fotos substituídas ou removidas vão para a lixeira
+        var antigas = APPS.map(function (k) { return fotoSalva[k] && fotoSalva[k] !== fotos[k] ? fotoSalva[k] : null; }).filter(Boolean);
+        APPS.forEach(function (k) {
+          fotoSalva[k] = fotoAtual[k] = fotos[k];
+          soltarPrevia(k); $("a-" + k + "-foto").value = ""; $("a-" + k + "-dica").textContent = "";
+          pintarFotoApp(k, fotos[k]);
+        });
+        var limpou = true;
+        for (var j = 0; j < antigas.length; j++) limpou = (await moverParaLixeira(antigas[j], null)) && limpou;
+        msg(m, "ok", "Salvo. O site já mostra a mudança." + (limpou ? "" : " A foto antiga continua guardada no depósito."));
+      } catch (e) { await descartarEnviadas(); msg(m, "err", erroTxt(e, "Não foi possível salvar.")); }
     });
   });
 
