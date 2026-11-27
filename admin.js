@@ -52,6 +52,14 @@
     } catch (e) { return null; }
   }
 
+  // Encerra a sessão. Sem internet o Supabase não apaga a sessão guardada no aparelho, então o painel apaga ele mesmo.
+  var CHAVE_SESSAO = "sb-" + new URL(C.SUPABASE_URL).hostname.split(".")[0] + "-auth-token";
+  async function encerrarSessao(escopo) {
+    var falhou = true;
+    try { var r = await sb.auth.signOut({ scope: escopo }); falhou = !!(r && r.error); } catch (e) {}
+    if (falhou) { try { localStorage.removeItem(CHAVE_SESSAO); } catch (e) {} }
+  }
+
   // Sessão: o painel sai sozinho depois de 30 minutos sem uso (inclusive se o aparelho ficar guardado).
   var LIMITE_PARADO = 30 * 60 * 1000, CHAVE_ATIVIDADE = "fm-painel-atividade";
   var MSG_PARADO = "Por segurança, o painel saiu depois de 30 minutos sem uso. Entre de novo.";
@@ -69,7 +77,7 @@
   async function sairPorInatividade() {
     if (!painelAberto) return;
     painelAberto = false; telas("login");
-    try { await sb.auth.signOut({ scope: "local" }); } catch (e) {}
+    await encerrarSessao("local");
     try { sessionStorage.setItem("fm-painel-parado", "1"); } catch (e) {}
     location.reload();
   }
@@ -104,23 +112,23 @@
   }
 
   sb.auth.onAuthStateChange(function (ev) {
-    if (ev === "PASSWORD_RECOVERY") { modoSenha = true; mostrarSenha(); }
+    if (ev === "PASSWORD_RECOVERY") { modoSenha = true; setTimeout(abrirTrocaDeSenha, 0); }
   });
 
   async function iniciar() {
     try {
       var s = await sb.auth.getSession();
       var user = s.data && s.data.session && s.data.session.user;
-      if (modoSenha && user) return mostrarSenha();
+      if (modoSenha && user) return await abrirTrocaDeSenha();
       if (!user) { mostrarLogin(); avisarSaidaPorInatividade(); return; }
       if (paradoDemais()) {
-        await sb.auth.signOut({ scope: "local" });
+        await encerrarSessao("local");
         mostrarLogin(); return msg($("msg-login"), "ok", MSG_PARADO);
       }
       var adm = await ehAdmin(user);
-      if (adm === true) mostrarPainel();
+      if (adm === true) await passarPelaSegundaEtapa(mostrarPainel);
       else if (adm === null) { mostrarLogin(); msg($("msg-login"), "err", "Não foi possível confirmar seu acesso agora (sem conexão?). Tente de novo em instantes."); }
-      else { await sb.auth.signOut(); mostrarLogin(); }
+      else { await encerrarSessao("local"); mostrarLogin(); }
     } catch (e) { mostrarLogin(); msg($("msg-login"), "err", erroTxt(e, "Não foi possível iniciar o painel. Recarregue a página.")); }
   }
   function avisarSaidaPorInatividade() {
@@ -131,7 +139,9 @@
     } catch (e) {}
   }
   function telas(qual) {
+    if (qual !== "painel") limparSegundaEtapa();                   // a chave do autenticador não fica na tela
     $("tela-login").style.display = qual === "login" ? "block" : "none";
+    $("tela-codigo").style.display = qual === "codigo" ? "block" : "none";
     $("tela-senha").style.display = qual === "senha" ? "block" : "none";
     $("tela-painel").style.display = qual === "painel" ? "block" : "none";
     $("btn-sair").style.display = qual === "painel" ? "inline-block" : "none";
@@ -141,8 +151,218 @@
   function mostrarPainel() {
     marcarAtividade(); painelAberto = true;
     telas("painel");
-    carregarPosts(); carregarTextos(); carregarApps();
+    msg($("msg-2fa"), "", "");
+    carregarPosts(); carregarTextos(); carregarApps(); carregarSegundaEtapa();
   }
+
+  // ---------- segunda etapa: código do aplicativo autenticador ----------
+  // A trava de verdade fica no banco (com um autenticador ativo, o banco só aceita a conta depois do código).
+  // O painel pede o código na hora certa e nunca abre se não conseguir conferir.
+  var fatorPendente = null, depoisDoCodigo = null, abrindoSenha = false;
+
+  // { falta: id } = há um autenticador e esta sessão ainda não passou por ele; { falta: null } = pode seguir; { erro } = não deu para conferir.
+  async function conferirSegundaEtapa() {
+    try {
+      var f = await sb.auth.mfa.listFactors();                     // pergunta ao servidor, não confia no que está guardado
+      if (f.error) return { erro: f.error };
+      var ativo = ((f.data && f.data.totp) || [])[0];
+      if (!ativo) return { falta: null };
+      var n = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (n.error) return { erro: n.error };
+      return { falta: n.data && n.data.currentLevel === "aal2" ? null : ativo.id };
+    } catch (e) { return { erro: e }; }
+  }
+  // Só segue para o destino (painel ou troca de senha) depois que a segunda etapa estiver resolvida.
+  async function passarPelaSegundaEtapa(destino) {
+    var s = await conferirSegundaEtapa();
+    if (s.erro) {
+      var st = Number(s.erro.status);
+      if (st === 401 || st === 403) { await encerrarSessao("local"); mostrarLogin(); return msg($("msg-login"), "err", "Sua sessão não vale mais. Entre de novo."); }
+      mostrarLogin();
+      return msg($("msg-login"), "err", erroTxt(s.erro, "Não foi possível conferir a segunda etapa agora. Recarregue a página e tente de novo."));
+    }
+    if (!s.falta) return destino();
+    fatorPendente = s.falta; depoisDoCodigo = destino;
+    marcarAtividade();                   // se o celular recarregar a página enquanto ele busca o código, volta para esta tela
+    mostrarCodigo();
+  }
+  async function abrirTrocaDeSenha() {
+    if (abrindoSenha) return;
+    abrindoSenha = true;
+    try { await passarPelaSegundaEtapa(mostrarSenha); } finally { abrindoSenha = false; }
+  }
+  function mostrarCodigo() {
+    var jaAberta = $("tela-codigo").style.display === "block";
+    telas("codigo");
+    if (!jaAberta) { $("codigo").value = ""; msg($("msg-codigo"), "", ""); try { $("codigo").focus(); } catch (e) {} }
+  }
+  // Aceita "123456" ou "123 456". Devolve "" se não forem exatamente 6 números.
+  function lerCodigo(id) { var v = $(id).value.replace(/\s/g, ""); return /^\d{6}$/.test(v) ? v : ""; }
+  function erroCodigo(err) {
+    var t = String((err && err.message) || ""), st = Number(err && err.status);
+    if (st === 429 || /rate limit|too many/i.test(t)) return "Muitas tentativas seguidas. Aguarde um minuto e tente de novo.";
+    if (/invalid totp|verification failed/i.test(t)) return "Código incorreto ou vencido. Digite o código que está aparecendo agora no autenticador. Se continuar, confira se a hora do celular está no automático.";
+    if (/factor.*not found|not found.*factor/i.test(t)) return "Esse autenticador não vale mais. Recarregue a página e comece de novo.";
+    return erroTxt(err, "Não foi possível conferir o código. Tente de novo com o código atual.");
+  }
+
+  $("form-codigo").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var m = $("msg-codigo"), c = lerCodigo("codigo");
+    if (!c) return msg(m, "err", "Digite os 6 números do código.");
+    if (!fatorPendente) return;
+    if (paradoDemais()) {                                          // a senha foi digitada há mais de 30 minutos: começa de novo
+      fatorPendente = null; depoisDoCodigo = null; modoSenha = false;
+      await encerrarSessao("local"); mostrarLogin();
+      return msg($("msg-login"), "ok", "Por segurança, passaram mais de 30 minutos. Entre de novo.");
+    }
+    await ocupado(this, async function () {
+      msg(m, "ok", "Conferindo…");
+      try {
+        var r = await sb.auth.mfa.challengeAndVerify({ factorId: fatorPendente, code: c });
+        if (r.error) { $("codigo").value = ""; return msg(m, "err", erroCodigo(r.error)); }
+        var destino = depoisDoCodigo;
+        if (!destino) return;                                      // desistiu (voltou ao login) enquanto conferia
+        fatorPendente = null; depoisDoCodigo = null;
+        $("codigo").value = ""; msg(m, "", "");
+        destino();
+      } catch (er) { msg(m, "err", erroCodigo(er)); }
+    });
+  });
+  $("codigo-voltar").addEventListener("click", async function (e) {
+    e.preventDefault();
+    fatorPendente = null; depoisDoCodigo = null; modoSenha = false;
+    $("codigo").value = ""; msg($("msg-codigo"), "", ""); msg($("msg-login"), "", "");
+    await encerrarSessao("local");
+    mostrarLogin();
+  });
+
+  // ---------- segunda etapa: ligar e desligar (aba Conta) ----------
+  var matricula = null, fatorAtivo = null, vez2fa = 0, mexendo2fa = false;
+  function limparSegundaEtapa() {
+    matricula = null; vez2fa++;
+    $("chave-2fa").value = ""; $("qr-2fa").removeAttribute("src"); $("detalhes-qr").open = false;
+    $("codigo-ativar").value = ""; $("codigo-desativar").value = ""; $("dica-2fa-copiar").textContent = "";
+    msg($("msg-2fa-ativar"), "", ""); msg($("msg-2fa-desativar"), "", "");
+    $("area-2fa-ativar").hidden = true; $("form-2fa-desativar").hidden = true;
+  }
+  async function carregarSegundaEtapa() {
+    if (matricula) return;                                         // não interrompe uma ativação em andamento
+    var vez = ++vez2fa;
+    $("btn-2fa-ativar").hidden = true; $("btn-2fa-desativar").hidden = true; $("btn-2fa-recarregar").hidden = true;
+    $("form-2fa-desativar").hidden = true;
+    $("situacao-2fa").textContent = "Conferindo…";
+    var r;
+    try { r = await sb.auth.mfa.listFactors(); } catch (e) { r = { error: e }; }
+    if (vez !== vez2fa) return;                                    // chegou uma resposta velha
+    if (r.error) {
+      $("situacao-2fa").textContent = erroTxt(r.error, "Não foi possível conferir agora.");
+      $("btn-2fa-recarregar").hidden = false;
+      return;
+    }
+    var ativo = ((r.data && r.data.totp) || [])[0];
+    fatorAtivo = ativo ? ativo.id : null;
+    $("situacao-2fa").textContent = ativo ? "✅ ATIVADA: o painel pede o código do autenticador a cada login." : "⚠️ DESATIVADA: hoje o painel pede só e-mail e senha.";
+    $("btn-2fa-ativar").hidden = !!ativo;
+    $("btn-2fa-desativar").hidden = !ativo;
+  }
+  // O servidor manda o QR como desenho (SVG); codifica para o navegador mostrar sem erro.
+  function enderecoQr(v) {
+    v = String(v || "");
+    var i = v.indexOf(",");
+    if (v.indexOf("data:image/svg+xml") !== 0 || i < 0) return "";
+    var desenho = v.slice(i + 1);
+    return desenho.charAt(0) === "<" ? "data:image/svg+xml;charset=utf-8," + encodeURIComponent(desenho) : v;
+  }
+
+  $("btn-2fa-recarregar").addEventListener("click", function () { carregarSegundaEtapa(); });
+
+  $("btn-2fa-ativar").addEventListener("click", async function () {
+    if (mexendo2fa) return;
+    var botao = this, m = $("msg-2fa");
+    mexendo2fa = true; botao.disabled = true;
+    msg(m, "ok", "Preparando…");
+    try {
+      var f = await sb.auth.mfa.listFactors();
+      if (f.error) return msg(m, "err", erroTxt(f.error, "Não foi possível ativar agora."));
+      if (f.data.totp.length) { msg(m, "ok", "A segunda etapa já está ativada."); return carregarSegundaEtapa(); }
+      // apaga ativações que ficaram pela metade (não valem para nada e atrapalham a nova)
+      var sobras = (f.data.all || []).filter(function (x) { return x.factor_type === "totp" && x.status !== "verified"; });
+      for (var i = 0; i < sobras.length; i++) await sb.auth.mfa.unenroll({ factorId: sobras[i].id });
+      var r = await sb.auth.mfa.enroll({ factorType: "totp", issuer: "Fortaleza Move", friendlyName: "Painel " + new Date().toISOString() });
+      if (r.error) return msg(m, "err", erroTxt(r.error, "Não foi possível ativar agora. Tente de novo em instantes."));
+      if (!painelAberto) return;                                   // saiu do painel enquanto preparava
+      matricula = r.data.id; vez2fa++;
+      $("chave-2fa").value = r.data.totp.secret;
+      $("qr-2fa").src = enderecoQr(r.data.totp.qr_code);
+      $("btn-2fa-ativar").hidden = true;
+      $("area-2fa-ativar").hidden = false;
+      $("situacao-2fa").textContent = "Ativação em andamento: só vale depois de confirmar o código.";
+      msg(m, "", "");
+    } catch (e) { msg(m, "err", erroTxt(e, "Não foi possível ativar agora.")); }
+    finally { mexendo2fa = false; botao.disabled = false; }
+  });
+
+  $("btn-2fa-copiar").addEventListener("click", async function () {
+    var campo = $("chave-2fa"), copiou = false;
+    try { await navigator.clipboard.writeText(campo.value); copiou = true; }
+    catch (e) { try { campo.focus(); campo.select(); copiou = document.execCommand("copy"); } catch (e2) {} }
+    $("dica-2fa-copiar").textContent = copiou ? "Copiada." : "Não consegui copiar. Toque e segure na chave para copiar.";
+  });
+
+  $("btn-2fa-cancelar").addEventListener("click", async function () {
+    var id = matricula;
+    limparSegundaEtapa(); msg($("msg-2fa"), "", "");
+    if (id) { try { await sb.auth.mfa.unenroll({ factorId: id }); } catch (e) {} }
+    carregarSegundaEtapa();
+  });
+
+  $("form-2fa-ativar").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var m = $("msg-2fa-ativar"), c = lerCodigo("codigo-ativar");
+    if (!c) return msg(m, "err", "Digite os 6 números do código.");
+    if (!matricula) return;
+    await ocupado(this, async function () {
+      var cancelar = $("btn-2fa-cancelar");
+      cancelar.disabled = true;                                    // evita cancelar no meio da confirmação
+      msg(m, "ok", "Conferindo…");
+      try {
+        var r = await sb.auth.mfa.challengeAndVerify({ factorId: matricula, code: c });
+        if (r.error) { $("codigo-ativar").value = ""; return msg(m, "err", erroCodigo(r.error)); }
+        limparSegundaEtapa();
+        await carregarSegundaEtapa();
+        msg($("msg-2fa"), "ok", "Pronto! A segunda etapa está ativada. A partir de agora o painel pede o código a cada login, e os outros aparelhos que estavam no painel foram desconectados.");
+      } catch (er) { msg(m, "err", erroCodigo(er)); }
+      finally { cancelar.disabled = false; }
+    });
+  });
+
+  $("btn-2fa-desativar").addEventListener("click", function () {
+    msg($("msg-2fa"), "", ""); msg($("msg-2fa-desativar"), "", "");
+    this.hidden = true; $("form-2fa-desativar").hidden = false;
+  });
+  $("btn-2fa-manter").addEventListener("click", function () {
+    $("codigo-desativar").value = ""; $("form-2fa-desativar").hidden = true; $("btn-2fa-desativar").hidden = false;
+  });
+  $("form-2fa-desativar").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var m = $("msg-2fa-desativar"), c = lerCodigo("codigo-desativar");
+    if (!c) return msg(m, "err", "Digite os 6 números do código.");
+    if (!fatorAtivo) return;
+    await ocupado(this, async function () {
+      msg(m, "ok", "Conferindo…");
+      try {
+        var v = await sb.auth.mfa.challengeAndVerify({ factorId: fatorAtivo, code: c });
+        if (v.error) { $("codigo-desativar").value = ""; return msg(m, "err", erroCodigo(v.error)); }
+        var r = await sb.auth.mfa.unenroll({ factorId: fatorAtivo });
+        if (r.error) return msg(m, "err", erroTxt(r.error, "O código conferiu, mas não consegui desativar. A segunda etapa continua ativada. Tente de novo."));
+        $("codigo-desativar").value = ""; msg(m, "", "");
+        try { await sb.auth.refreshSession(); } catch (er) {}
+        await carregarSegundaEtapa();
+        msg($("msg-2fa"), "ok", "Segunda etapa desativada. O painel voltou a pedir só e-mail e senha. No autenticador, apague a entrada antiga.");
+      } catch (er) { msg(m, "err", erroTxt(er, "Não foi possível desativar. Confira a conexão e tente de novo.")); }
+    });
+  });
 
   $("form-senha").addEventListener("submit", async function (e) {
     e.preventDefault();
@@ -159,9 +379,9 @@
         history.replaceState(null, "", location.pathname);
         var u = r.data && r.data.user;
         var adm = u ? await ehAdmin(u) : false;
-        if (adm === true) mostrarPainel();
+        if (adm === true) await passarPelaSegundaEtapa(mostrarPainel);
         else if (adm === null) { mostrarLogin(); msg($("msg-login"), "ok", "Senha salva. Entre com a nova senha."); }
-        else { await sb.auth.signOut(); mostrarLogin(); msg($("msg-login"), "err", "Esta conta não tem acesso ao painel."); }
+        else { await encerrarSessao("local"); mostrarLogin(); msg($("msg-login"), "err", "Esta conta não tem acesso ao painel."); }
       } catch (e) { msg(m, "err", erroTxt(e, "Não foi possível salvar a senha.")); }
     });
   });
@@ -178,10 +398,10 @@
         }
         var adm = await ehAdmin(r.data.user);
         if (adm === null) return msg($("msg-login"), "err", "Não foi possível confirmar seu acesso agora (sem conexão?). Tente de novo.");
-        if (!adm) { await sb.auth.signOut(); return msg($("msg-login"), "err", "Esta conta não tem acesso ao painel."); }
+        if (!adm) { await encerrarSessao("local"); return msg($("msg-login"), "err", "Esta conta não tem acesso ao painel."); }
         $("senha").value = "";
         msg($("msg-login"), "", "");
-        mostrarPainel();
+        await passarPelaSegundaEtapa(mostrarPainel);
       } catch (e) { msg($("msg-login"), "err", erroTxt(e, "Não foi possível entrar agora. Tente de novo.")); }
     });
   });
@@ -211,7 +431,7 @@
 
   $("btn-sair").addEventListener("click", async function () {
     painelAberto = false;
-    try { await sb.auth.signOut(); } catch (e) { /* mesmo sem rede, a sessão local é encerrada */ }
+    await encerrarSessao("global");
     mostrarLogin();
   });
 
@@ -225,8 +445,20 @@
       if (b.dataset.tab === "apps" && !appsOk) carregarApps();           // só recarrega se a primeira carga falhou
       $("tab-conta").style.display = b.dataset.tab === "conta" ? "block" : "none";
       if (b.dataset.tab === "textos" && !textosOk) carregarTextos();
+      if (b.dataset.tab === "conta") carregarSegundaEtapa();
     });
   });
+
+  // Confere a senha atual numa conexão separada e descartável: a sessão do painel (que já passou pela segunda etapa) continua a mesma.
+  async function conferirSenhaAtual(email, senha) {
+    var teste = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: "fm-conferencia-de-senha" }
+    });
+    var r = await teste.auth.signInWithPassword({ email: email, password: senha });
+    if (r.error) return r.error;
+    try { await teste.auth.signOut({ scope: "local" }); } catch (e) {}
+    return null;
+  }
 
   $("form-conta").addEventListener("submit", async function (e) {
     e.preventDefault();
@@ -240,8 +472,8 @@
         var s = await sb.auth.getSession();
         var email = s.data && s.data.session && s.data.session.user && s.data.session.user.email;
         if (!email) return msg(m, "err", "Sua sessão expirou. Toque em Sair, entre de novo e repita a ação.");
-        var conf = await sb.auth.signInWithPassword({ email: email, password: atual });
-        if (conf.error) return msg(m, "err", erroTxt(conf.error, "A senha atual não confere. A senha NÃO foi trocada."));
+        var recusa = await conferirSenhaAtual(email, atual);
+        if (recusa) return msg(m, "err", Number(recusa.status) === 429 ? "Muitas tentativas seguidas. Aguarde um minuto. A senha NÃO foi trocada." : erroTxt(recusa, "A senha atual não confere. A senha NÃO foi trocada."));
         var r = await sb.auth.updateUser({ password: a });
         if (r.error) return msg(m, "err", erroTxt(r.error, "Não foi possível trocar a senha. Saia, entre de novo e tente outra vez."));
         $("c-atual").value = ""; $("c-nova1").value = ""; $("c-nova2").value = "";
